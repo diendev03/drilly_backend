@@ -3,6 +3,6 @@ const router = express.Router();
 const profileController = require('../controllers/profile.controller');
 
 // Cập nhật profile
-router.post('/user/profile/update', profileController.updateProfile);
+router.post('/profile/update', profileController.updateProfile);
 
 module.exports = router;

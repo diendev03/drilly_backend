@@ -39,7 +39,9 @@ const findAccountByEmail = async (email) => {
 
 // ✅ Tìm account theo ID
 const findAccountById = async (account_id) => {
+  console.log('🔍 Tìm account theo ID:', account_id);
   const query = `SELECT * FROM account WHERE id = ? LIMIT 1`;
+  console.log('SQL Query: ' + query.replace('?', account_id));
   try {
     const db = await getConnection();
     const [rows] = await db.execute(query, [account_id]);
@@ -50,8 +52,22 @@ const findAccountById = async (account_id) => {
   }
 };
 
+// ✅ Đổi mật khẩu
+const changePassword = async (account_id, newPassword) => {
+  const query = `UPDATE account SET password = ? WHERE id = ?`;
+  try {
+    const db = await getConnection();
+    await db.execute(query, [newPassword, account_id]);
+    return true;
+  } catch (error) {
+    console.error('❌ Lỗi changePassword:', error.message);
+    throw error;
+  }
+};
+
 module.exports = {
   createAccount,
   findAccountByEmail,
   findAccountById,
+  changePassword
 };

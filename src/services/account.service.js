@@ -70,9 +70,25 @@ const forgotPassword = async (email) => {
   return { message: 'Đã gửi email khôi phục mật khẩu' };
 };
 
+// Đổi mật khẩu
+const changePassword = async ({ account_id, old_password, new_password }) => {
+  console.log("service Tìm account theo ID:", { account_id, old_password, new_password });
+
+  const account = await accountRepository.getAccountById(account_id);
+  if (!account) throw new Error('Tài khoản không tồn tại');
+
+  const ok = await bcrypt.compare(old_password, account.password);
+  if (!ok) throw new Error('Mật khẩu cũ không chính xác');
+
+  const hashed = await bcrypt.hash(new_password, 10);
+  return await accountRepository.changePassword(account_id, hashed);
+};
+
+
 module.exports = {
   createUser,
   findUserByEmail,
   login,
   forgotPassword,
+  changePassword
 };

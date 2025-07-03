@@ -53,8 +53,37 @@ const forgotPasswordHandler = async (req, res) => {
   }
 };
 
+// ✅ Đổi mật khẩu
+const changePasswordHandler = async (req, res) => {
+  try {
+    const { old_password, new_password } = req.body;
+const account_id = req.headers['account_id'];  
+    if (!account_id?.trim()) {
+      return sendFail(res, 'Thiếu account_id trong header');
+    }
+    if (!old_password) {
+      return sendFail(res, 'Thiếu thông tin mật khẩu cũ');
+    }
+    if (!new_password) {
+      return sendFail(res, 'Thiếu thông tin mật khẩu mới');
+    }
+
+    const result = await accountService.changePassword({
+      account_id: account_id,
+      old_password: old_password,
+      new_password: new_password
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('❌ Lỗi khi đổi mật khẩu:', error.message, error.stack);
+    return sendError(res, 'Lỗi server', error);
+  }
+};
+
 module.exports = {
   createUser,
   login,
-  forgotPasswordHandler
+  forgotPasswordHandler,
+  changePasswordHandler
 };

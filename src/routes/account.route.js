@@ -3,12 +3,15 @@ const router = express.Router();
 const accountController = require('../controllers/account.controller');
 
 // Tạo user
-router.post('/user', accountController.createUser);
+router.post('/create', accountController.createUser);
 
 // Đăng nhập
-router.post('/user/login', accountController.login);
+router.post('/login', accountController.login);
 
 // Quên mật khẩu
-router.post('/auth/forgot-password', accountController.forgotPasswordHandler);
+router.post('/forgot-password', accountController.forgotPasswordHandler);
+
+// Đổi mật khẩu
+router.post('/change-password', accountController.changePasswordHandler);
 
 module.exports = router;
