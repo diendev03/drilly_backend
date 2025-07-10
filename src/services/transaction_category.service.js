@@ -54,7 +54,32 @@ const createCategory = async ({
   });
 };
 
+const searchCategory = async({keyword}) => {
+  const rows = await transactionCategoryRepository.searchCategory(keyword);
+  const result = rows.map(item => ({
+    id: item.id,
+    name: item.name,
+    type: item.type,
+    icon: item.icon,
+    color: item.color,
+    isGlobal: item.is_global,
+    createdAt: item.created_at,
+  }));
+
+  return result;
+};
+
+const updateCategory = async (id, updateData) => {
+  const result = await transactionCategoryRepository.updateCategory(id, updateData);
+  if (result.affectedRows === 0) {
+    throw new Error('Category not found or no changes made');
+  }
+  return result;
+};
+
 module.exports = {
   getAllCategories,
-  createCategory
+  createCategory,
+  searchCategory,
+  updateCategory
 };

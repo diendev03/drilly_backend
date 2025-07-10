@@ -6,5 +6,7 @@ const verifyToken = require('../middlewares/verifyToken');
 // Cập nhật danh mục giao dịch
 router.get('/', verifyToken, transactionCategoryController.getAllCategories);
 router.post('/create', verifyToken, transactionCategoryController.createCategory);
+router.get('/search', verifyToken, transactionCategoryController.searchCategory);
+router.put('/update/:id', verifyToken, transactionCategoryController.updateCategory);
 
 module.exports = router;

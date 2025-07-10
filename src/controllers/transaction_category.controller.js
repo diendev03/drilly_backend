@@ -35,7 +35,40 @@ const getAllCategories = async (req, res) => {
         sendError(res, error);
     }
 };
+
+const searchCategory = async (req, res) => {
+    try {
+        const { keyword } = req.query;
+        const categories = await transactionService.searchCategory({ keyword });
+        return sendSuccess(res, 'Success', categories);
+    } catch (error) {
+        sendError(res, error);
+    }
+};
+
+const updateCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, type, icon, color } = req.body;
+
+    if (!id) return sendFail(res, 'Thiếu ID danh mục');
+
+    if (!name && !type && !icon && !color) {
+      return sendFail(res, 'Không có thông tin cập nhật');
+    }
+
+   const result = await transactionService.updateCategory(id, { name, type, icon, color });
+
+    return sendSuccess(res, 'Updated successfully', result);
+  } catch (error) {
+    sendError(res, error);
+  }
+};
+
+
 module.exports = {
     createCategory,
-    getAllCategories
-};  
+    getAllCategories,
+    searchCategory,
+    updateCategory
+};

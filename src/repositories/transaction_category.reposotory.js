@@ -70,7 +70,15 @@ const updateCategory = async (id, updateData) => {
 
   const db = await getConnection();
   const [result] = await db.execute(query, values);
-  return result;
+
+  if (result.affectedRows === 0) return null;
+
+  // Lấy lại category sau khi cập nhật
+  const [rows] = await db.execute(
+    `SELECT * FROM transaction_category WHERE id = ? LIMIT 1`,
+    [id]
+  );
+  return rows[0];
 };
 
 // ✅ Xóa danh mục
