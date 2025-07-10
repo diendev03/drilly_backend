@@ -56,17 +56,11 @@ const forgotPasswordHandler = async (req, res) => {
 // ✅ Đổi mật khẩu
 const changePasswordHandler = async (req, res) => {
   try {
+    const account_id = req.account?.account_id;
     const { old_password, new_password } = req.body;
-const account_id = req.headers['account_id'];  
-    if (!account_id?.trim()) {
-      return sendFail(res, 'Thiếu account_id trong header');
-    }
-    if (!old_password) {
-      return sendFail(res, 'Thiếu thông tin mật khẩu cũ');
-    }
-    if (!new_password) {
-      return sendFail(res, 'Thiếu thông tin mật khẩu mới');
-    }
+    if (!account_id) return sendFail(res, 'Sai token xác thực');
+    if (!old_password) return sendFail(res, 'Thiếu mật khẩu cũ');
+    if (!new_password) return sendFail(res, 'Thiếu mật khẩu mới');
 
     const result = await accountService.changePassword({
       account_id: account_id,

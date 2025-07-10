@@ -11,7 +11,7 @@ const createUser = async ({ name, email, password }) => {
   if (existing) throw new Error('Email đã tồn tại');
 
   const hashed = await bcrypt.hash(password, 10);
-  return await accountRepository.createAccountInDB(name, email, hashed);
+  return await accountRepository.createAccount({ email, password: hashed });
 };
 
 // Lấy account theo email
@@ -72,7 +72,6 @@ const forgotPassword = async (email) => {
 
 // Đổi mật khẩu
 const changePassword = async ({ account_id, old_password, new_password }) => {
-  console.log("service Tìm account theo ID:", { account_id, old_password, new_password });
 
   const account = await accountRepository.getAccountById(account_id);
   if (!account) throw new Error('Tài khoản không tồn tại');
