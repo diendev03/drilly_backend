@@ -1,6 +1,4 @@
-const {
-  updateProfileInDB,   // hàm repo cập nhật profile
-} = require('../repositories/profile.repository');
+const profileRepo= require('../repositories/profile.repository');
 
 /* ---------- PROFILE SERVICE ---------- */
 
@@ -9,7 +7,6 @@ const updateProfile = async (profileData) => {
   const {
     account_id,
     name,
-    email,
     birthday,
     gender,
     mycolor,
@@ -19,10 +16,9 @@ const updateProfile = async (profileData) => {
   } = profileData;
 
   // Gọi repository để cập nhật
-  return await updateProfileInDB({
+  return await profileRepo.updateProfile({
     account_id,
     name,
-    email,
     birthday,
     gender,
     mycolor,
@@ -31,5 +27,9 @@ const updateProfile = async (profileData) => {
     location,
   });
 };
+// Lấy hồ sơ người dùng theo account_id
+const getProfile = async (account_id) => {  
+  return await profileRepo.getProfile(account_id);
+}
 
-module.exports = { updateProfile };
+module.exports = { updateProfile, getProfile };

@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const accountController = require('../controllers/account.controller');
+const verifyToken = require('../middlewares/verifyToken');
+
 
 // Tạo user
 router.post('/create', accountController.createUser);
@@ -12,6 +14,6 @@ router.post('/login', accountController.login);
 router.post('/forgot-password', accountController.forgotPasswordHandler);
 
 // Đổi mật khẩu
-router.post('/change-password', accountController.changePasswordHandler);
+router.post('/change-password', verifyToken, accountController.changePasswordHandler);
 
 module.exports = router;
