@@ -65,10 +65,28 @@ const updateCategory = async (req, res) => {
   }
 };
 
+const deleteCategory = async (req, res) => {
+  try {
+    const account_id = req.account?.account_id;
+    const { id } = req.params;
+
+    if (!id) return sendFail(res, 'Thiếu ID danh mục');
+    if (!account_id) return sendFail(res, 'Thiếu account_id');
+
+    const result = await transactionService.deleteCategory({ account_id, id });
+
+    return sendSuccess(res, 'Xóa thành công', result);
+  } catch (error) {
+    sendError(res, error.message || 'Lỗi hệ thống');
+  }
+};
+
+
 
 module.exports = {
     createCategory,
     getAllCategories,
     searchCategory,
-    updateCategory
+    updateCategory,
+    deleteCategory
 };

@@ -76,10 +76,26 @@ const updateCategory = async (id, updateData) => {
   }
   return result;
 };
+const deleteCategory = async ({ account_id, id }) => {
+  const account = await accountRespository.getAccountById(account_id);
+  if (account.role !== 0) {
+    throw new Error('Bạn không có quyền xóa danh mục');
+  }
+
+  const result = await transactionCategoryRepository.deleteCategory(id);
+
+  if (!result || result.affectedRows === 0) {
+    throw new Error(`Không tồn tại danh mục với ID: ${id}`);
+  }
+
+  return result;
+};
+
 
 module.exports = {
   getAllCategories,
   createCategory,
   searchCategory,
-  updateCategory
+  updateCategory,
+  deleteCategory
 };
