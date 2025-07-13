@@ -14,7 +14,7 @@ const createAccount = async ({ email, password, role = 0, status = 'active' }) =
   try {
     const db = await getConnection();
     await db.execute(query, [email, password, status, role]);
-    return await getAccountByEmail(email);
+    return getAccountByEmail(email);
   } catch (error) {
     console.error('❌ Lỗi createAccount:', error.message);
     throw error;
