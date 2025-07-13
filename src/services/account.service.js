@@ -3,8 +3,6 @@ const { sendMail } = require('../utils/mailer');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-/* ---------- ACCOUNT SERVICE ---------- */
-
 // Tạo mới tài khoản
 const createUser = async ({ name, email, password }) => {
   const existing = await accountRepository.getAccountByEmail(email);
@@ -33,15 +31,7 @@ const login = async ({ email, password }) => {
     { expiresIn: '7d' }
   );
 
-  return {
-    token,
-    user: {
-      id: account.id,
-      email: account.email,
-      status: account.status,
-      role: account.role,
-    },
-  };
+  return token;
 };
 
 // Quên mật khẩu
