@@ -1,4 +1,5 @@
 const accountRepository = require('../repositories/account.repository');
+const profileRepository = require('../repositories/profile.repository');
 const { sendMail } = require('../utils/mailer');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -9,7 +10,12 @@ const createUser = async ({ name, email, password }) => {
   if (existing) throw new Error('Email đã tồn tại');
 
   const hashed = await bcrypt.hash(password, 10);
-  return await accountRepository.createAccount({ email, password: hashed });
+  const account = await accountRepository.createAccount({ email, password: hashed });
+  const profile = await profileRepository.createProfile({
+    account_id: account.id, name: name, email: email
+  });
+  if (!profile) throw new Error('Không thể tạo profile');
+  return 'Tạo tài khoản thành công';
 };
 
 // Lấy account theo email

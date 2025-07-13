@@ -7,8 +7,8 @@ const getConnection = async () => {
 // ✅ Tạo profile
 const createProfile = async ({
   account_id,
-  name,
-  email,
+  name = '',
+  email = '',
   birthday = null,
   gender = null,
   mycolor = '',
@@ -24,11 +24,15 @@ const createProfile = async ({
     const [result] = await db.execute(query, [
       account_id, name, email, birthday, gender, mycolor, avatar, location
     ]);
-    console.log('✅ Profile created:', result.insertId);
-    return result;
+
+    if (result.affectedRows === 1) {
+      return true;
+    } else {
+      return false;
+    }
   } catch (error) {
     console.error('❌ Lỗi createProfile:', error.message);
-    throw error;
+    return false;
   }
 };
 
