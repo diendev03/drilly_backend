@@ -2,7 +2,7 @@
 
 <p align="center">
   <strong>Backend API cho hệ thống <a href="https://drilly.io.vn" target="_blank">drilly.io.vn</a></strong><br>
-  Được phát triển và vận hành bởi <code>Huỳnh Quốc Điền</code> aka <code>diendev03</code>.
+  Được phát triển và vận hành bởi <code>Huỳnh Quốc Diện</code> aka <code>diendev03</code>.
 </p>
 
 <p align="center">
