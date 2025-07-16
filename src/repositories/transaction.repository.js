@@ -64,8 +64,8 @@ const getTransactionSummaryByAccount = async ({ account_id, start_date, end_date
     const conn = await getConnection();
     const query = `
         SELECT 
-            SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) AS total_income,
-            SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) AS total_expense
+            IFNULL(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS total_income,
+            IFNULL(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS total_expense
         FROM transaction
         WHERE account_id = ?
           AND transaction_date >= ?
@@ -75,6 +75,7 @@ const getTransactionSummaryByAccount = async ({ account_id, start_date, end_date
     const [rows] = await conn.query(query, [account_id, start_date, end_date]);
     return rows[0];
 };
+
 
 const updateTransaction = async ({ id, account_id, type, category_id, amount, note, transaction_date, image_url }) => {
     const conn = await getConnection();
