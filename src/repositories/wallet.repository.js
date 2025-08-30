@@ -34,7 +34,7 @@ const updateWalletBalance = async (account_id, wallet_id, new_balance) => {
     console.log('Updating wallet:', wallet_id, 'for account:', account_id, 'with new balance:', new_balance);
     const conn = await getConnection();
     const [rows] = await conn.execute(
-        'UPDATE wallet SET balance = ? WHERE account_id = ? AND id = ?',
+        'UPDATE wallet SET balance = ?, updated_at = NOW() WHERE account_id = ? AND id = ?',
         [new_balance, account_id, wallet_id]
     );
     return rows.affectedRows > 0;
