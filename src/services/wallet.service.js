@@ -44,10 +44,20 @@ const deleteWallet = async (account_id,wallet_id) => {
     }
 };
 
+const getTotalBalanceByAccountId = async (account_id) => {
+    try {
+        const totalBalance = await walletRepository.getTotalBalanceByAccountId(account_id);
+        return totalBalance;
+    } catch (error) {
+        throw new Error('Error fetching total balance');
+    }
+};
+
 module.exports = {
     createWallet,
     getWalletByAccountId,
     getWalletByWalletId,
     updateWalletBalance,
-    deleteWallet
+    deleteWallet,
+    getTotalBalanceByAccountId
 };
