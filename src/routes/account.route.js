@@ -11,9 +11,9 @@ router.post('/create', accountController.createUser);
 router.post('/login', accountController.login);
 
 // Quên mật khẩu
-router.post('/forgot-password', accountController.forgotPasswordHandler);
+router.post('/forgot-password', accountController.forgotPassword);
 
 // Đổi mật khẩu
-router.post('/change-password', verifyToken, accountController.changePasswordHandler);
+router.post('/change-password', verifyToken, accountController.changePassword);
 
 module.exports = router;

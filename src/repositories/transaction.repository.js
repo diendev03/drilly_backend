@@ -19,9 +19,8 @@ const createTransaction = async ({ account_id, type, category_id, amount, note, 
   return transaction;
 };
 
-const getTransactionsByAccount = async ({ account_id, start_date, end_date,type, category_id,id }) => {
+const getTransactionsByAccount = async ({ account_id, start_date, end_date,type, category,id }) => {
   const conn = await getConnection();
-
   let query = `
     SELECT * FROM transaction 
     WHERE (? IS NULL OR account_id = ?)
@@ -39,7 +38,7 @@ const getTransactionsByAccount = async ({ account_id, start_date, end_date,type,
     end_date, end_date,
     id, id,
     type, type,
-    category_id, category_id
+    category, category
   ]);
 
   return rows;
@@ -60,7 +59,6 @@ const getTransactionById = async ({ account_id, id }) => {
 };
 
 const getTransactionSummaryByAccount = async ({ account_id, start_date, end_date }) => {
-    console.log('getTransactionSummaryByAccount', { account_id, start_date, end_date });
     const conn = await getConnection();
     const query = `
         SELECT 

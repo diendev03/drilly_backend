@@ -15,7 +15,8 @@ const createUser = async ({ name, email, password }) => {
     account_id: account.id, name: name, email: email
   });
   if (!profile) throw new Error('Không thể tạo profile');
-  return 'Tạo tài khoản thành công';
+  const { password: _, ...safeAccount } = account;
+  return safeAccount;
 };
 
 // Lấy account theo email
