@@ -5,8 +5,15 @@ const createTransaction = async ({ account_id, type, category_id, amount, note, 
     return transaction;
 };
 
-const getTransactionsByAccount = async ({ account_id, start_date, end_date, type, category_id }) => {
-    const transactions = await transactionRepo.getTransactionsByAccount({ account_id:account_id, start_date:start_date, end_date:end_date, type:type, category_id:category_id });
+const getTransactionsByAccount = async ({ account_id, start_date, end_date, type, category}) => {
+    console.log('Fetching transactions with params:', { account_id, start_date, end_date, type, category });
+    const transactions = await transactionRepo.getTransactionsByAccount({
+        account_id:account_id,
+        start_date:start_date, 
+        end_date:end_date, 
+        type:type, 
+        category:category
+    });
     const result = transactions.map(item => ({
         id: item.id,
         account_id: item.account_id,
