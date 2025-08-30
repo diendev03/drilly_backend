@@ -14,7 +14,13 @@ const createAccount = async ({ email, password, role = 0, status = 'active' }) =
   try {
     const db = await getConnection();
     await db.execute(query, [email, password, status, role]);
-    return getAccountByEmail(email);
+    account = await getAccountByEmail(email);
+    await db.execute(
+        'INSERT INTO wallet (account_id, balance, created_at) VALUES (?, 0, NOW())',
+        [account.id]
+    );
+
+    return account;
   } catch (error) {
     console.error('❌ Lỗi createAccount:', error.message);
     throw error;

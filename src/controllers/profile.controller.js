@@ -1,5 +1,5 @@
 const profileService = require('../services/profile.service');
-const { sendCreated, sendFail, sendError } = require('../utils/response');
+const { sendCreated,sendSuccess, sendFail, sendError } = require('../utils/response');
 
 // ✅ Cập nhật hồ sơ
 const updateProfile = async (req, res) => {
@@ -8,11 +8,11 @@ const updateProfile = async (req, res) => {
     const account_id = req.account?.account_id;
 
     if (!account_id) {
-      return sendFail(res, 'Sai token xác thực');
+      return sendFail(res, 'Invalid authentication token');
     }
 
     if (!name && !email && !birthday && !gender && !mycolor && !avatar && !bio && !location) {
-      return sendFail(res, 'Thiếu thông tin cập nhật');
+      return sendFail(res, 'Missing update information');
     }
 
     const updatedProfile = await profileService.updateProfile({
@@ -26,9 +26,9 @@ const updateProfile = async (req, res) => {
       location
     });
 
-    return sendCreated(res, 'Cập nhật hồ sơ thành công', updatedProfile);
+    return sendCreated(res, 'Update profile successfully', updatedProfile);
   } catch (error) {
-    return sendError(res, 'Lỗi server', error);
+    return sendError(res, 'Server error', error);
   }
 };
 const getProfile = async (req, res) => {
@@ -36,21 +36,17 @@ const getProfile = async (req, res) => {
     const account_id = req.account?.account_id;
 
     if (!account_id) {
-      return sendFail(res, 'Sai token xác thực');
+      return sendFail(res, 'Invalid authentication token');
     }
 
     const profile = await profileService.getProfile(account_id);
     if (!profile) {
-      return sendFail(res, 'Không tìm thấy hồ sơ');
+      return sendFail(res, 'Can not find profile');
     }
 
-    return res.status(200).json({
-      success: true,
-      message: 'Lấy hồ sơ thành công',
-      data: profile
-    });
+    return sendSuccess(res, 'Get profile successfully', profile);
   } catch (error) {
-    return sendError(res, 'Lỗi server', error);
+    return sendError(res, 'Server error', error);
   }
 };
 
