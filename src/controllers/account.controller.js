@@ -38,7 +38,7 @@ const login = async (req, res) => {
 };
 
 // ✅ Quên mật khẩu
-const forgotPasswordHandler = async (req, res) => {
+const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return sendFail(res, 'Email là bắt buộc');
@@ -54,7 +54,7 @@ const forgotPasswordHandler = async (req, res) => {
 };
 
 // ✅ Đổi mật khẩu
-const changePasswordHandler = async (req, res) => {
+const changePassword = async (req, res) => {
   try {
     const account_id = req.account?.account_id;
     const { old_password, new_password } = req.body;
@@ -78,6 +78,6 @@ const changePasswordHandler = async (req, res) => {
 module.exports = {
   createUser,
   login,
-  forgotPasswordHandler,
-  changePasswordHandler
+  forgotPassword,
+  changePassword
 };

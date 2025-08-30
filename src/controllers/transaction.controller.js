@@ -25,8 +25,15 @@ const filterTransactions = async (req, res) => {
             return res.status(401).json({ error: 'Unauthorized' });
         }
         const account_id = req.account.account_id;
-        const { start_date, end_date, type, category_id } = req.query;
-        const transactions = await transactionService.getTransactionsByAccount({ account_id, start_date, end_date, type, category_id });
+        const { start_date, end_date, type, category } = req.query;
+console.log('Filtering transactions with params:', { account_id, start_date, end_date, type, category });
+        const transactions = await transactionService.getTransactionsByAccount({ 
+            account_id, 
+            start_date, 
+            end_date, 
+            type, 
+            category
+        });
         sendSuccess(res, "Danh sách giao dịch", transactions);
     } catch (error) {
         console.error('Error fetching transactions:', error);
@@ -65,7 +72,6 @@ const getTransactionSummaryByAccount = async (req, res) => {
         }
         const account_id = req.account.account_id;
         const { start_date, end_date } = req.query;
-        console.log('getTransactionSumaryByAccount', { account_id, start_date, end_date });
         const summary = await transactionService.getTransactionSummaryByAccount({ account_id, start_date, end_date });
         sendSuccess(res, "Transaction summary", summary);
     } catch (error) {
