@@ -100,10 +100,24 @@ const deleteWallet = async (req, res) => {
     }
 };
 
+const getTotalBalance = async (req, res) => {
+    const account_id = req.account?.account_id;
+    if (!account_id) {
+        return sendFail(res, 'Invalid authentication token');
+    }
+    try {
+        const totalBalance = await walletService.getTotalBalanceByAccountId(account_id);
+        sendSuccess(res, 'Total balance fetched successfully',totalBalance);
+    } catch (error) {
+        sendError(res, error);
+    }
+};
+
 module.exports = {
     createWallet,
     getWalletByAccountId,
     getWallet,
     updateWallet,
-    deleteWallet
+    deleteWallet,
+    getTotalBalance
 };
