@@ -48,10 +48,22 @@ const deleteWalletByAccountId = async (account_id, wallet_id) => {
     );
 };
 
+const getTotalBalanceByAccountId = async (account_id) => {
+  const conn = await getConnection();
+  const [rows] = await conn.query(
+    'SELECT SUM(balance) as total_balance FROM wallet WHERE account_id = ?',
+    [account_id]
+  );
+  console.log('Total balance rows:', rows);
+  return rows[0]?.total_balance || 0;
+};
+
+
 module.exports = {
     createWallet,
     getWalletByAccountId,
     getWalletById,
     updateWalletBalance,
-    deleteWalletByAccountId
+    deleteWalletByAccountId,
+    getTotalBalanceByAccountId
 };
