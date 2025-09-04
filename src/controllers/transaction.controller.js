@@ -86,12 +86,12 @@ const updateTransaction = async (req, res) => {
             return res.status(401).json({ error: 'Unauthorized' });
         }
         const account_id = req.account.account_id;
-        const transactionId = req.params.id;
-        if (!transactionId) {
+        const id = req.params.id;
+        if (!id) {
             return sendFail(res, 400, 'Transaction ID is required');
         }
-        const { type, category_id, amount, note, date, image_url } = req.body;
-        const updatedTransaction = await transactionService.updateTransaction({ id: transactionId, account_id, type, category_id, amount, note, date, image_url });
+        const { amount, note } = req.body;
+        const updatedTransaction = await transactionService.updateTransaction({ id, account_id, amount, note });
         if (!updatedTransaction) {
             return sendFail(res, 404, 'Transaction not found');
         }

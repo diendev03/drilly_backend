@@ -92,11 +92,11 @@ const getTransactionSummaryByAccount = async ({ account_id, start_date, end_date
 };
 
 
-const updateTransaction = async ({ id, account_id, type, category_id, amount, note, date, image_url }) => {
+const updateTransaction = async ({ id, account_id, amount, note }) => {
     const conn = await getConnection();
     const [result] = await conn.query(
-        'UPDATE transaction SET type = ?, category = ?, amount = ?, note = ?, date = ?, image_url = ? WHERE account_id = ? AND id = ?',
-        [type, category_id, amount, note, date, image_url, account_id, id]
+        'UPDATE transaction SET amount = ?, note = ? WHERE account_id = ? AND id = ?',
+        [amount, note, account_id, id]
     );
     return await getTransactionById({ account_id: account_id, id: id });
 };
