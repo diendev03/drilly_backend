@@ -1,47 +1,64 @@
 const dbPromise = require('../config/database');
+const walletReposotory = require('./wallet.repository');
 
 // Kết nối DB
 const getConnection = async () => {
     return await dbPromise;
 };
 
-const createTransaction = async ({ account_id, type, category_id, amount, note, transaction_date, image_url }) => {
+const createTransaction = async ({ account_id, type, category, amount, note, date, image_url }) => {
     const conn = await getConnection();
     const [result] = await conn.query(
-        'INSERT INTO transaction (account_id, type, category, amount, note, transaction_date, image_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
-        [account_id, type, category_id, amount, note, transaction_date, image_url]
+        'INSERT INTO transaction (account_id, type, category, amount, note, date, image_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
+        [account_id, type, category, amount, note, date, image_url]
     );
     const newId = result.insertId;
 
-  // Lấy dữ liệu vừa tạo
-  const transaction = await getTransactionById({id: newId });
+    // Lấy balance
+    const walletAmount = await walletReposotory.getWalletByAccountId(account_id);
+    const currentBalance = walletAmount[0]?.balance ?? 0;
 
-  return transaction;
+    // Đảm bảo amount là số
+    const amountNum = Number(amount);
+    let newAmount = currentBalance;
+
+    (type === "income") ? newAmount += amountNum : newAmount -= amountNum;
+
+    await walletReposotory.updateWalletBalance(
+        account_id,
+        walletAmount[0]?.id,
+        newAmount
+    );
+
+    // Lấy dữ liệu vừa tạo
+    const transaction = await getTransactionById({ id: newId });
+    return transaction;
 };
 
-const getTransactionsByAccount = async ({ account_id, start_date, end_date,type, category,id }) => {
-  const conn = await getConnection();
-  let query = `
+
+const getTransactionsByAccount = async ({ account_id, start_date, end_date, type, category, id }) => {
+    const conn = await getConnection();
+    let query = `
     SELECT * FROM transaction 
     WHERE (? IS NULL OR account_id = ?)
-      AND (? IS NULL OR transaction_date >= ?)
-      AND (? IS NULL OR transaction_date <= ?)
+      AND (? IS NULL OR date >= ?)
+      AND (? IS NULL OR date <= ?)
       AND (? IS NULL OR id = ?)
       AND (? IS NULL OR type = ?)
       AND (? IS NULL OR category = ?)
-    ORDER BY transaction_date DESC
+    ORDER BY date DESC
   `;
 
-  const [rows] = await conn.query(query, [
-    account_id,account_id,
-    start_date, start_date,
-    end_date, end_date,
-    id, id,
-    type, type,
-    category, category
-  ]);
+    const [rows] = await conn.query(query, [
+        account_id, account_id,
+        start_date, start_date,
+        end_date, end_date,
+        id, id,
+        type, type,
+        category, category
+    ]);
 
-  return rows;
+    return rows;
 };
 
 const getTransactionById = async ({ account_id, id }) => {
@@ -66,8 +83,8 @@ const getTransactionSummaryByAccount = async ({ account_id, start_date, end_date
             IFNULL(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS total_expense
         FROM transaction
         WHERE account_id = ?
-          AND transaction_date >= ?
-          AND transaction_date <= ?
+          AND date >= ?
+          AND date <= ?
     `;
 
     const [rows] = await conn.query(query, [account_id, start_date, end_date]);
@@ -75,11 +92,11 @@ const getTransactionSummaryByAccount = async ({ account_id, start_date, end_date
 };
 
 
-const updateTransaction = async ({ id, account_id, type, category_id, amount, note, transaction_date, image_url }) => {
+const updateTransaction = async ({ id, account_id, type, category_id, amount, note, date, image_url }) => {
     const conn = await getConnection();
     const [result] = await conn.query(
-        'UPDATE transaction SET type = ?, category = ?, amount = ?, note = ?, transaction_date = ?, image_url = ? WHERE account_id = ? AND id = ?',
-        [type, category_id, amount, note, transaction_date, image_url, account_id, id]
+        'UPDATE transaction SET type = ?, category = ?, amount = ?, note = ?, date = ?, image_url = ? WHERE account_id = ? AND id = ?',
+        [type, category_id, amount, note, date, image_url, account_id, id]
     );
     return await getTransactionById({ account_id: account_id, id: id });
 };

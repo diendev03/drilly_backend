@@ -106,8 +106,8 @@ const getTotalBalance = async (req, res) => {
         return sendFail(res, 'Invalid authentication token');
     }
     try {
-        const totalBalance = await walletService.getTotalBalanceByAccountId(account_id);
-        sendSuccess(res, 'Total balance fetched successfully',totalBalance);
+        const total_balance = await walletService.getTotalBalanceByAccountId(account_id);
+        sendSuccess(res, 'Total balance fetched successfully',{total_balance});
     } catch (error) {
         sendError(res, error);
     }

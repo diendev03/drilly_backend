@@ -1,7 +1,7 @@
 const transactionRepo = require('../repositories/transaction.repository');
 
-const createTransaction = async ({ account_id, type, category_id, amount, note, transaction_date, image_url }) => {
-    const transaction = await transactionRepo.createTransaction({ account_id, type, category_id, amount, note, transaction_date, image_url });
+const createTransaction = async ({ account_id, type, category, amount, note, date, image_url }) => {
+    const transaction = await transactionRepo.createTransaction({ account_id, type, category, amount, note, date, image_url });
     return transaction;
 };
 
@@ -21,7 +21,7 @@ const getTransactionsByAccount = async ({ account_id, start_date, end_date, type
         category: item.category,
         amount: item.amount,
         note: item.note,
-        transaction_date: item.transaction_date,
+        date: item.date,
         image_url: item.image_url,
         created_at: item.created_at
     }));
@@ -37,7 +37,7 @@ const getTransactionById = async ({account_id,id}) => {
         category: item.category,
         amount: item.amount,
         note: item.note,
-        transaction_date: item.transaction_date,
+        date: item.date,
         image_url: item.image_url,
         created_at: item.created_at
     }));
@@ -49,8 +49,8 @@ const getTransactionSummaryByAccount = async ({ account_id, start_date, end_date
     return transactions;
 };
 
-const updateTransaction = async ({ id, account_id, type, category_id, amount, note, transaction_date, image_url }) => {
-    const updated = await transactionRepo.updateTransaction({ id, account_id, type, category_id, amount, note, transaction_date, image_url });
+const updateTransaction = async ({ id, account_id, type, category_id, amount, note, date, image_url }) => {
+    const updated = await transactionRepo.updateTransaction({ id, account_id, type, category_id, amount, note, date, image_url });
     return updated;
 };
 

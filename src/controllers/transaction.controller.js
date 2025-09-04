@@ -6,12 +6,12 @@ const createTransaction = async (req, res) => {
         if (!req.account) {
             return sendFail(res, 401, 'Unauthorized');
         }
-        if (!req.body || !req.body.type || !req.body.category_id || !req.body.amount || !req.body.transaction_date) {
+        if (!req.body || !req.body.type || !req.body.category || !req.body.amount || !req.body.date) {
             return sendFail(res, 400, 'Missing required fields');
         }
-        const { type, category_id, amount, note, transaction_date, image_url } = req.body;
+        const { type, category, amount, note, date, image_url } = req.body;
         const account_id = req.account.account_id;
-        const transaction = await transactionService.createTransaction({ account_id, type, category_id, amount, note, transaction_date, image_url });
+        const transaction = await transactionService.createTransaction({ account_id, type, category, amount, note, date, image_url });
         sendCreated(res, "Transaction created successfully", transaction);
     } catch (error) {
         console.error('Error creating transaction:', error);
@@ -90,8 +90,8 @@ const updateTransaction = async (req, res) => {
         if (!transactionId) {
             return sendFail(res, 400, 'Transaction ID is required');
         }
-        const { type, category_id, amount, note, transaction_date, image_url } = req.body;
-        const updatedTransaction = await transactionService.updateTransaction({ id: transactionId, account_id, type, category_id, amount, note, transaction_date, image_url });
+        const { type, category_id, amount, note, date, image_url } = req.body;
+        const updatedTransaction = await transactionService.updateTransaction({ id: transactionId, account_id, type, category_id, amount, note, date, image_url });
         if (!updatedTransaction) {
             return sendFail(res, 404, 'Transaction not found');
         }
