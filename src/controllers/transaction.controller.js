@@ -116,7 +116,7 @@ const deleteTransaction = async (req, res) => {
         if (!deleted) {
             return sendFail(res, 404, 'Transaction not found');
         }
-        sendSuccess(res, "Transaction deleted successfully");
+        sendSuccess(res, "Transaction deleted successfully", deleted);
     } catch (error) {
         console.error('Error deleting transaction:', error);
         sendError(res, 500, 'Internal server error');
