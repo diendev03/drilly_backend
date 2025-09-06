@@ -4,14 +4,14 @@ const { sendCreated,sendSuccess, sendFail, sendError } = require('../utils/respo
 // ✅ Cập nhật hồ sơ
 const updateProfile = async (req, res) => {
   try {
-    const { name, birthday, gender, mycolor, avatar, bio, location } = req.body;
+    const { name, birthday, gender, my_color, avatar, bio, location } = req.body;
     const account_id = req.account?.account_id;
 
     if (!account_id) {
       return sendFail(res, 'Invalid authentication token');
     }
 
-    if (!name && !email && !birthday && !gender && !mycolor && !avatar && !bio && !location) {
+    if (!name && !email && !birthday && !gender && !my_color && !avatar && !bio && !location) {
       return sendFail(res, 'Missing update information');
     }
 
@@ -20,7 +20,7 @@ const updateProfile = async (req, res) => {
       name,
       birthday,
       gender,
-      mycolor,
+      my_color,
       avatar,
       bio,
       location
