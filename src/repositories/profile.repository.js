@@ -11,18 +11,21 @@ const createProfile = async ({
   email = '',
   birthday = null,
   gender = null,
-  mycolor = '',
+  my_color = '',
   avatar = '',
   location = ''
 }) => {
   const query = `
-    INSERT INTO profile (account_id, name, email, birthday, gender, mycolor, avatar, location, created_at)
+    INSERT INTO profile (account_id, name, email, birthday, gender, my_color, avatar, location, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
   `;
+   if (!my_color || my_color.trim() === '') {
+    my_color = 'DBA507';
+  }
   try {
     const db = await getConnection();
     const [result] = await db.execute(query, [
-      account_id, name, email, birthday, gender, mycolor, avatar, location
+      account_id, name, email, birthday, gender, my_color, avatar, location
     ]);
 
     if (result.affectedRows === 1) {
@@ -58,20 +61,20 @@ const updateProfile = async ({
   name,
   birthday,
   gender,
-  mycolor,
+  my_color,
   avatar,
   bio,
   location
 }) => {
   const query = `
     UPDATE profile
-    SET name = ?,  birthday = ?, gender = ?, mycolor = ?, avatar = ?, bio = ?, location = ?
+    SET name = ?,  birthday = ?, gender = ?, my_color = ?, avatar = ?, bio = ?, location = ?
     WHERE account_id = ?
   `;
   try {
     const db = await getConnection();
     const [result] = await db.execute(query, [
-      name, birthday, gender, mycolor, avatar, bio, location, account_id
+      name, birthday, gender, my_color, avatar, bio, location, account_id
     ]);
     if (result.affectedRows === 0) throw new Error('Không tìm thấy profile');
     return {};
