@@ -6,7 +6,6 @@ const getConnection = async () => {
 
 // Tạo account mới
 const createAccount = async ({ email, password, role = 0, status = 'active' }) => {
-  console.log('🔧 Tạo account:', { email, role, status });
   const query = `
     INSERT INTO account (email, password, created_at, status, role)
     VALUES (?, ?, NOW(), ?, ?)
