@@ -110,11 +110,37 @@ const deleteTransaction = async ({ id, account_id }) => {
     return result.affectedRows > 0;
 };
 
+const getTotalAmountByPeriod = async ({ account_id, type, mode }) => {
+    const conn = await getConnection();
+
+    let dateCondition = '';
+    if (mode === 'today') {
+        dateCondition = `DATE(date) = CURDATE()`;
+    } else if (mode === 'week') {
+        dateCondition = `YEARWEEK(date, 1) = YEARWEEK(CURDATE(), 1)`; // tuần bắt đầu từ thứ 2
+    } else {
+        throw new Error("Invalid mode. Use 'today' or 'week'.");
+    }
+
+    const query = `
+        SELECT IFNULL(SUM(amount), 0) AS total
+        FROM transaction
+        WHERE account_id = ?
+          AND type = ?
+          AND ${dateCondition}
+    `;
+
+    const [rows] = await conn.query(query, [account_id, type]);
+    return rows[0].total;
+};
+
+
 module.exports = {
     createTransaction,
     getTransactionsByAccount,
     getTransactionById,
     getTransactionSummaryByAccount,
     updateTransaction,
-    deleteTransaction
+    deleteTransaction,
+    getTotalAmountByPeriod
 };
