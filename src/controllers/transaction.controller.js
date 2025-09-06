@@ -123,11 +123,27 @@ const deleteTransaction = async (req, res) => {
     }
 };
 
+const getTransactionSummaryBalance=async(req,res)=>{
+    try {
+        if (!req.account) {
+            return sendError(res, 401, 'Unauthorized');
+        }
+        const account_id = req.account.account_id;
+        
+        const summary = await transactionService.getTransactionSummaryBalance({account_id });
+        sendSuccess(res, "Transaction summarry", summary);
+    } catch (error) {
+        console.error('Error get transaction summarry:', error);
+        sendError(res, 500, 'Error get transaction summarry');
+    }
+}
+
 module.exports = {
     createTransaction,
     filterTransactions,
     getTransactionById,
     updateTransaction,
     getTransactionSummaryByAccount,
-    deleteTransaction
+    deleteTransaction,
+    getTransactionSummaryBalance
 };
