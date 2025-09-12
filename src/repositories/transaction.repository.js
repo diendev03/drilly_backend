@@ -92,23 +92,91 @@ const getTransactionSummaryByAccount = async ({ account_id, start_date, end_date
 };
 
 
-const updateTransaction = async ({ id, account_id, amount, note }) => {
-    const conn = await getConnection();
-    const [result] = await conn.query(
-        'UPDATE transaction SET amount = ?, note = ? WHERE account_id = ? AND id = ?',
-        [amount, note, account_id, id]
-    );
-    return await getTransactionById({ account_id: account_id, id: id });
+const updateTransaction = async ({ id, account_id, amount, note, type }) => {
+  const conn = await getConnection();
+
+  // 1. Lấy thông tin giao dịch cũ
+  const oldTransaction = await getTransactionById({ id, account_id });
+  const oldAmount = Number(oldTransaction.amount);
+  const oldType = oldTransaction.type;
+
+  // 2. Lấy số dư ví hiện tại
+  const walletInfo = await walletReposotory.getWalletByAccountId(account_id);
+  const currentBalance = Number(walletInfo[0]?.balance ?? 0);
+  let newBalance = currentBalance;
+
+  // 3. Trừ giá trị cũ ra khỏi ví
+  if (oldType === "income") {
+    newBalance -= oldAmount;
+  } else {
+    newBalance += oldAmount;
+  }
+
+  // 4. Cộng lại giá trị mới vào ví
+  const newAmount = Number(amount);
+  if (type === "income") {
+    newBalance += newAmount;
+  } else {
+    newBalance -= newAmount;
+  }
+
+  // 5. Cập nhật giao dịch
+  await conn.query(
+    'UPDATE transaction SET amount = ?, note = ?, type = ? WHERE account_id = ? AND id = ?',
+    [newAmount, note, type, account_id, id]
+  );
+
+  // 6. Cập nhật số dư ví
+  await walletReposotory.updateWalletBalance(
+    account_id,
+    walletInfo[0]?.id,
+    newBalance
+  );
+
+  return await getTransactionById({ account_id, id });
 };
 
+
 const deleteTransaction = async ({ id, account_id }) => {
-    const conn = await getConnection();
-    const [result] = await conn.query(
-        'DELETE FROM transaction WHERE id = ? AND account_id = ?',
-        [id, account_id]
-    );
-    return result.affectedRows > 0;
+  const conn = await getConnection();
+
+  // 1. Lấy giao dịch cũ để lấy amount & type
+  const oldTransaction = await getTransactionById({ id, account_id });
+  if (!oldTransaction) {
+    throw new Error("Transaction not found.");
+  }
+
+  const amountNum = Number(oldTransaction.amount);
+  const type = oldTransaction.type;
+
+  // 2. Lấy thông tin ví hiện tại
+  const walletInfo = await walletReposotory.getWalletByAccountId(account_id);
+  const currentBalance = Number(walletInfo[0]?.balance ?? 0);
+  let newBalance = currentBalance;
+
+  // 3. Cập nhật số dư
+  if (type === "income") {
+    newBalance -= amountNum;
+  } else {
+    newBalance += amountNum;
+  }
+
+  // 4. Xóa giao dịch
+  const [result] = await conn.query(
+    'DELETE FROM transaction WHERE id = ? AND account_id = ?',
+    [id, account_id]
+  );
+
+  // 5. Cập nhật lại số dư ví
+  await walletReposotory.updateWalletBalance(
+    account_id,
+    walletInfo[0]?.id,
+    newBalance
+  );
+
+  return result.affectedRows > 0;
 };
+
 
 const getTotalAmountByPeriod = async ({ account_id, type, mode }) => {
     const conn = await getConnection();

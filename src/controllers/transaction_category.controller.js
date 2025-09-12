@@ -29,7 +29,24 @@ const createCategory = async (req, res) => {
 
 const getAllCategories = async (req, res) => {
     try {
-        const categories = await transactionService.getAllCategories();
+        if (!req.account) {
+            return sendError(res, 401, 'Unauthorized');
+        }
+        const account_id = req.account.account_id;
+        const categories = await transactionService.getAllCategories({ account_id });
+        return sendSuccess(res, 'Success', categories);
+    } catch (error) {
+        sendError(res, error);
+    }
+};
+
+const getCategoriesByOwner = async (req, res) => {
+    try {
+        if (!req.account) {
+            return sendError(res, 401, 'Unauthorized');
+        }
+        const account_id = req.account.account_id;
+        const categories = await transactionService.getCategoriesByOwner({account_id});
         return sendSuccess(res, 'Success', categories);
     } catch (error) {
         sendError(res, error);
@@ -49,15 +66,15 @@ const searchCategory = async (req, res) => {
 const updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, type, icon, color } = req.body;
+    const { name, icon} = req.body;
 
     if (!id) return sendFail(res, 'Thiếu ID danh mục');
 
-    if (!name && !type && !icon && !color) {
+    if (!name && !icon) {
       return sendFail(res, 'Không có thông tin cập nhật');
     }
 
-   const result = await transactionService.updateCategory(id, { name, type, icon, color });
+   const result = await transactionService.updateCategory(id, { name,icon });
 
     return sendSuccess(res, 'Updated successfully', result);
   } catch (error) {
@@ -86,6 +103,7 @@ const deleteCategory = async (req, res) => {
 module.exports = {
     createCategory,
     getAllCategories,
+    getCategoriesByOwner,
     searchCategory,
     updateCategory,
     deleteCategory

@@ -31,7 +31,6 @@ const getWalletById = async (account_id,wallet_id) => {
 };
 
 const updateWalletBalance = async (account_id, wallet_id, new_balance) => {
-    console.log('Updating wallet:', wallet_id, 'for account:', account_id, 'with new balance:', new_balance);
     const conn = await getConnection();
     const [rows] = await conn.execute(
         'UPDATE wallet SET balance = ?, updated_at = NOW() WHERE account_id = ? AND id = ?',
@@ -54,7 +53,6 @@ const getTotalBalanceByAccountId = async (account_id) => {
     'SELECT SUM(balance) as total_balance FROM wallet WHERE account_id = ?',
     [account_id]
   );
-  console.log('Total balance rows:', rows);
   return rows[0]?.total_balance || 0;
 };
 

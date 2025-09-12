@@ -26,7 +26,6 @@ const filterTransactions = async (req, res) => {
         }
         const account_id = req.account.account_id;
         const { start_date, end_date, type, category } = req.query;
-console.log('Filtering transactions with params:', { account_id, start_date, end_date, type, category });
         const transactions = await transactionService.getTransactionsByAccount({ 
             account_id, 
             start_date, 
@@ -90,8 +89,8 @@ const updateTransaction = async (req, res) => {
         if (!id) {
             return sendFail(res, 400, 'Transaction ID is required');
         }
-        const { amount, note } = req.body;
-        const updatedTransaction = await transactionService.updateTransaction({ id, account_id, amount, note });
+        const { amount, note, type } = req.body;
+        const updatedTransaction = await transactionService.updateTransaction({ id, account_id, amount, note, type });
         if (!updatedTransaction) {
             return sendFail(res, 404, 'Transaction not found');
         }
