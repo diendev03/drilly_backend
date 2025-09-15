@@ -2,16 +2,31 @@ const transactionCategoryRepository = require('../repositories/transaction_categ
 const accountRespository = require('../repositories/account.repository');
 const e = require('express');
 
-const getAllCategories = async () => {
-  const rows = await transactionCategoryRepository.getAllCategories();
+const getAllCategories = async ({ account_id }) => {
+  const rows = await transactionCategoryRepository.getAllCategories({ account_id });
   const result = rows.map(item => ({
     id: item.id,
     name: item.name,
     type: item.type,
     icon: item.icon,
     color: item.color,
-    isGlobal: item.is_global,
-    createdAt: item.created_at,
+    is_global: item.is_global,
+    created_at: item.created_at,
+  }));
+
+  return result;
+};
+
+const getCategoriesByOwner = async ({account_id}) => {
+  const rows = await transactionCategoryRepository.getCategoriesByOwner({account_id});
+  const result = rows.map(item => ({
+    id: item.id,
+    name: item.name,
+    type: item.type,
+    icon: item.icon,
+    color: item.color,
+    is_global: item.is_global,
+    created_at: item.created_at,
   }));
 
   return result;
@@ -94,6 +109,7 @@ const deleteCategory = async ({ account_id, id }) => {
 
 module.exports = {
   getAllCategories,
+  getCategoriesByOwner,
   createCategory,
   searchCategory,
   updateCategory,

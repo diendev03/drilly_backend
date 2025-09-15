@@ -5,16 +5,15 @@ require('dotenv').config();
 
 const PORT = process.env.PORT || 3000;
 
-// Đường dẫn tuyệt đối đến cloudflared.exe
-const tunnelPath = '"C:\\Program Files\\cloudflared\\cloudflared.exe"'; // phải thêm dấu " "
+// Đường dẫn tới cloudflared
+const tunnelPath = '"C:\\Program Files\\cloudflared\\cloudflared.exe"';
 
-app.listen(PORT, () => {
+// Tạo server
+const server = app.listen(PORT, () => {
   console.log(`✅ Server đang chạy tại http://localhost:${PORT}`);
 
-  // Dùng shell để chạy file có khoảng trắng trong đường dẫn
-  const tunnel = spawn(`${tunnelPath} tunnel run drill-tunnel`, {
-    shell: true
-  });
+  // Cloudflare Tunnel
+  const tunnel = spawn(`${tunnelPath} tunnel run drill-tunnel`, { shell: true });
 
   tunnel.stdout.on('data', (data) => {
     const text = data.toString();
@@ -39,3 +38,8 @@ app.listen(PORT, () => {
     console.warn(`⚠️ Tunnel kết thúc (mã: ${code})`);
   });
 });
+
+// ✅ Cấu hình timeout quan trọng
+server.setTimeout(30 * 1000);         // timeout xử lý request
+server.keepAliveTimeout = 60 * 1000;  // TCP giữ kết nối lâu hơn
+server.headersTimeout = 65 * 1000;    // chờ headers từ client

@@ -38,11 +38,24 @@ const createCategory = async ({
 
 
 // ✅ Lấy tất cả danh mục
-const getAllCategories = async () => {
+const getAllCategories = async ({ account_id }) => {
   const db = await getConnection();
-  const [rows] = await db.execute('SELECT * FROM transaction_category');
+  const [rows] = await db.execute('SELECT * FROM transaction_category WHERE is_global=0 OR owner_id = ? ORDER BY name ASC',[account_id]);
   return rows;
 };
+
+const getCategoriesByOwner = async ({ account_id }) => {
+  const db = await getConnection();
+  const [rows] = await db.execute(
+    `SELECT * FROM transaction_category 
+     WHERE owner_id = ? 
+     ORDER BY name ASC`,
+    [account_id]
+  );
+  return rows;
+};
+
+
 
 // ✅ Tìm kiếm theo keyword (name hoặc type)
 const searchCategory = async (keyword) => {
@@ -85,13 +98,14 @@ const updateCategory = async (id, updateData) => {
 const deleteCategory = async (id) => {
   const db = await getConnection();
   const [result] = await db.execute('DELETE FROM transaction_category WHERE id = ?', [id]);
-  return result;
+  return result.affectedRows>0;
 };
 
 module.exports = {
   createCategory,
   getAllCategories,
+  getCategoriesByOwner,
   searchCategory,
   updateCategory,
-  deleteCategory
+  deleteCategory,
 };

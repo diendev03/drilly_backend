@@ -1,5 +1,6 @@
 const transactionService = require('../services/transaction.service');
 const { sendSuccess, sendCreated, sendFail, sendError } = require('../utils/response');
+const pusher = require('../config/pusher');
 
 const createTransaction = async (req, res) => {
     try {
@@ -12,6 +13,7 @@ const createTransaction = async (req, res) => {
         const { type, category, amount, note, date, image_url } = req.body;
         const account_id = req.account.account_id;
         const transaction = await transactionService.createTransaction({ account_id, type, category, amount, note, date, image_url });
+        pusher.trigger('transactions-channel', 'new-transaction', transaction);
         sendCreated(res, "Transaction created successfully", transaction);
     } catch (error) {
         console.error('Error creating transaction:', error);
@@ -20,26 +22,38 @@ const createTransaction = async (req, res) => {
 };
 
 const filterTransactions = async (req, res) => {
-    try {
-        if (!req.account) {
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-        const account_id = req.account.account_id;
-        const { start_date, end_date, type, category } = req.query;
-console.log('Filtering transactions with params:', { account_id, start_date, end_date, type, category });
-        const transactions = await transactionService.getTransactionsByAccount({ 
-            account_id, 
-            start_date, 
-            end_date, 
-            type, 
-            category
-        });
-        sendSuccess(res, "Danh sách giao dịch", transactions);
-    } catch (error) {
-        console.error('Error fetching transactions:', error);
-        sendError(res, 500, 'Internal server error');
+  try {
+    if (!req.account) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
+
+    const account_id = req.account.account_id;
+    const {
+      start_date,
+      end_date,
+      type,
+      categories,
+      limit,
+      offset
+    } = req.query;
+
+    const transactions = await transactionService.getTransactionsByAccount({
+      account_id,
+      start_date,
+      end_date,
+      type,
+      categories,
+      limit,
+      offset
+    });
+
+    sendSuccess(res, "Danh sách giao dịch", transactions);
+  } catch (error) {
+    console.error('Error fetching transactions:', error);
+    sendError(res, 500, 'Internal server error');
+  }
 };
+
 
 const getTransactionById = async (req, res) => {
     try {
@@ -90,8 +104,14 @@ const updateTransaction = async (req, res) => {
         if (!id) {
             return sendFail(res, 400, 'Transaction ID is required');
         }
-        const { amount, note } = req.body;
-        const updatedTransaction = await transactionService.updateTransaction({ id, account_id, amount, note });
+        const {amount, note, type } = req.body;
+        if (!amount) {
+            return sendFail(res, 400, 'Amount is required');
+        }
+        if (!type) {
+            return sendFail(res, 400, 'Type is required');
+        }
+        const updatedTransaction = await transactionService.updateTransaction({ id, account_id, amount, note, type });
         if (!updatedTransaction) {
             return sendFail(res, 404, 'Transaction not found');
         }

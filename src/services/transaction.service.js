@@ -5,29 +5,43 @@ const createTransaction = async ({ account_id, type, category, amount, note, dat
     const transaction = await transactionRepo.createTransaction({ account_id, type, category, amount, note, date, image_url });
     return transaction;
 };
+const getTransactionsByAccount = async ({
+  account_id,
+  start_date,
+  end_date,
+  type,
+  categories,
+  limit,
+  offset
+}) => {
+  console.log(`user ${account_id} fetching transactions`);
 
-const getTransactionsByAccount = async ({ account_id, start_date, end_date, type, category }) => {
-    console.log('Fetching transactions with params:', { account_id, start_date, end_date, type, category });
-    const transactions = await transactionRepo.getTransactionsByAccount({
-        account_id: account_id,
-        start_date: start_date,
-        end_date: end_date,
-        type: type,
-        category: category
-    });
-    const result = transactions.map(item => ({
-        id: item.id,
-        account_id: item.account_id,
-        type: item.type,
-        category: item.category,
-        amount: item.amount,
-        note: item.note,
-        date: item.date,
-        image_url: item.image_url,
-        created_at: item.created_at
-    }));
-    return result;
+  const transactions = await transactionRepo.getTransactionsByAccount({
+    account_id,
+    start_date,
+    end_date,
+    type,
+    categories,
+    limit: typeof limit !== 'undefined' ? Number(limit) : undefined,
+    offset: typeof offset !== 'undefined' ? Number(offset) : undefined,
+  });
+
+  const result = transactions.map(item => ({
+    id: item.id,
+    account_id: item.account_id,
+    type: item.type,
+    category: item.category,
+    amount: item.amount,
+    note: item.note,
+    date: item.date,
+    image_url: item.image_url,
+    created_at: item.created_at
+  }));
+
+  return result;
 };
+
+
 
 const getTransactionById = async ({ account_id, id }) => {
     const transactions = await transactionRepo.getTransactionsByAccount({ account_id: account_id, id: id });
@@ -50,8 +64,8 @@ const getTransactionSummaryByAccount = async ({ account_id, start_date, end_date
     return transactions;
 };
 
-const updateTransaction = async ({ id, account_id, amount, note }) => {
-    const updated = await transactionRepo.updateTransaction({ id, account_id, amount, note });
+const updateTransaction = async ({ id, account_id, amount, note, type }) => {
+    const updated = await transactionRepo.updateTransaction({ id, account_id, amount, note, type });
     return updated;
 };
 
