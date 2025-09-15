@@ -10,8 +10,8 @@ const getAllCategories = async ({ account_id }) => {
     type: item.type,
     icon: item.icon,
     color: item.color,
-    isGlobal: item.is_global,
-    createdAt: item.created_at,
+    is_global: item.is_global,
+    created_at: item.created_at,
   }));
 
   return result;

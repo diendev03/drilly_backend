@@ -1,0 +1,17 @@
+config:
+  target: "https://drilly.io.vn"
+  phases:
+    - duration: 30       # test trong 10s
+      arrivalRate: 200    # 50 requests mỗi giây
+  defaults:
+    headers:
+      Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjozNCwiZW1haWwiOiJsbnRnYW1lMTIzQGdtYWlsLmNvbSIsImlhdCI6MTc1Nzg2NTkzOCwiZXhwIjoxNzU4NDcwNzM4fQ.mps_324JjZScQIgtXi05GImxa5HU9DH8EORUvr_HFhs"
+scenarios:
+  - flow:
+      - get:
+          url: "/api/v1/transaction/summary?start_date=2025-09-01&end_date=2025-09-20"
+
+
+# use:
+# artillery run summary-test.yml --output report.json
+# artillery report --output summary-report.html report.json
