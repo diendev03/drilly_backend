@@ -1,5 +1,5 @@
 const accountService = require('../services/account.service');
-const { sendCreated, sendFail, sendError } = require('../utils/response');
+const { sendCreated, sendFail, sendError, sendSuccess } = require('../utils/response');
 
 // ✅ Tạo tài khoản
 const createUser = async (req, res) => {
@@ -16,7 +16,6 @@ const createUser = async (req, res) => {
     if (error.message.includes('Email đã tồn tại')) {
       return sendFail(res, error.message);
     }
-    console.error('❌ Lỗi khi tạo tài khoản:', error.message, error.stack);
     return sendError(res, 'Lỗi server', error);
   }
 };
@@ -27,15 +26,39 @@ const login = async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return sendFail(res, 'Thiếu email hoặc mật khẩu');
 
-    const result = await accountService.login({ email, password });
-    return sendCreated(res, 'Đăng nhập thành công', result);
+    const result = await accountService.login({ email, password }); 
+    // result = { accessToken, refreshToken }
+
+    return sendSuccess(res, 'Đăng nhập thành công', result);
+  }  catch (error) {
+  if (error.message.includes('không tồn tại') || error.message.includes('không chính xác')) {
+    return sendFail(res, error.message);
+  }
+  return sendError(res, 'Lỗi server', error);
+}
+};
+
+
+// ✅ Refresh token
+const refreshToken = async (req, res) => {
+  try {
+    const { refresh_token } = req.body;
+    if (!refresh_token) return sendFail(res, 'Thiếu refresh token');
+
+    const result = await accountService.refreshToken({ refresh_token });
+    // result = { accessToken, refreshToken mới }
+ 
+    return sendSuccess(res,'Làm mới token thành công',result);
   } catch (error) {
-    if (error.message.includes('không tồn tại') || error.message.includes('không chính xác')) {
+    if (error.message.includes('không hợp lệ') || error.message.includes('hết hạn')) {
       return sendFail(res, error.message);
     }
     return sendError(res, 'Lỗi server', error);
   }
 };
+
+
+
 
 // ✅ Quên mật khẩu
 const forgotPassword = async (req, res) => {
@@ -70,7 +93,6 @@ const changePassword = async (req, res) => {
 
     return res.status(200).json(result);
   } catch (error) {
-    console.error('❌ Lỗi khi đổi mật khẩu:', error.message, error.stack);
     return sendError(res, 'Lỗi server', error);
   }
 };
@@ -79,5 +101,6 @@ module.exports = {
   createUser,
   login,
   forgotPassword,
-  changePassword
+  changePassword,
+  refreshToken
 };
