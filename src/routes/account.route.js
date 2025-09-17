@@ -10,6 +10,9 @@ router.post('/create', accountController.createUser);
 // Đăng nhập
 router.post('/login', accountController.login);
 
+// Refresh token
+router.post('/refresh-token', accountController.refreshToken);
+
 // Quên mật khẩu
 router.post('/forgot-password', accountController.forgotPassword);
 

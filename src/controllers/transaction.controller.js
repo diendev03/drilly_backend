@@ -16,7 +16,6 @@ const createTransaction = async (req, res) => {
         pusher.trigger('transactions-channel', 'new-transaction', transaction);
         sendCreated(res, "Transaction created successfully", transaction);
     } catch (error) {
-        console.error('Error creating transaction:', error);
         sendError(res, 500, 'Internal server error');
     }
 };
@@ -49,7 +48,6 @@ const filterTransactions = async (req, res) => {
 
     sendSuccess(res, "Danh sách giao dịch", transactions);
   } catch (error) {
-    console.error('Error fetching transactions:', error);
     sendError(res, 500, 'Internal server error');
   }
 };
