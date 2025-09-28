@@ -20,36 +20,54 @@ const createTransaction = async (req, res) => {
     }
 };
 
-const filterTransactions = async (req, res) => {
-  try {
-    if (!req.account) {
-      return res.status(401).json({ error: 'Unauthorized' });
+const getTransactionByFilter = async (req, res) => {
+    try {
+        if (!req.account) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const account_id = req.account.account_id;
+        const {
+            start_date,
+            end_date,
+            type,
+            categories,
+            limit,
+            offset
+        } = req.query;
+
+        const transactions = await transactionService.getTransactionsByFilter({
+            account_id,
+            start_date,
+            end_date,
+            type,
+            categories,
+            limit,
+            offset
+        });
+
+        sendSuccess(res, "Danh sách giao dịch", transactions);
+    } catch (error) {
+        sendError(res, 500, 'Internal server error');
     }
+};
 
-    const account_id = req.account.account_id;
-    const {
-      start_date,
-      end_date,
-      type,
-      categories,
-      limit,
-      offset
-    } = req.query;
+const getTransactionsMonthlyChart = async (req, res) => {
+    try {
+        if (!req.account) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
 
-    const transactions = await transactionService.getTransactionsByAccount({
-      account_id,
-      start_date,
-      end_date,
-      type,
-      categories,
-      limit,
-      offset
-    });
+        const account_id = req.account.account_id;
 
-    sendSuccess(res, "Danh sách giao dịch", transactions);
-  } catch (error) {
-    sendError(res, 500, 'Internal server error');
-  }
+        const transactions = await transactionService.getTransactionsMonthlyChart({
+            account_id
+        });
+
+        sendSuccess(res, "Danh sách giao dịch", transactions);
+    } catch (error) {
+        sendError(res, 500, 'Internal server error');
+    }
 };
 
 
@@ -69,7 +87,6 @@ const getTransactionById = async (req, res) => {
         }
         sendSuccess(res, "Transaction details", transaction);
     } catch (error) {
-        console.error('Error fetching transaction:', error);
         sendError(res, 500, 'Internal server error');
     }
 };
@@ -102,7 +119,7 @@ const updateTransaction = async (req, res) => {
         if (!id) {
             return sendFail(res, 400, 'Transaction ID is required');
         }
-        const {amount, note, type } = req.body;
+        const { amount, note, type } = req.body;
         if (!amount) {
             return sendFail(res, 400, 'Amount is required');
         }
@@ -141,14 +158,14 @@ const deleteTransaction = async (req, res) => {
     }
 };
 
-const getTransactionSummaryBalance=async(req,res)=>{
+const getTransactionSummaryBalance = async (req, res) => {
     try {
         if (!req.account) {
             return sendError(res, 401, 'Unauthorized');
         }
         const account_id = req.account.account_id;
-        
-        const summary = await transactionService.getTransactionSummaryBalance({account_id });
+
+        const summary = await transactionService.getTransactionSummaryBalance({ account_id });
         sendSuccess(res, "Transaction summarry", summary);
     } catch (error) {
         console.error('Error get transaction summarry:', error);
@@ -158,7 +175,8 @@ const getTransactionSummaryBalance=async(req,res)=>{
 
 module.exports = {
     createTransaction,
-    filterTransactions,
+    getTransactionByFilter,
+    getTransactionsMonthlyChart,
     getTransactionById,
     updateTransaction,
     getTransactionSummaryByAccount,
