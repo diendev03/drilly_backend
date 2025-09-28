@@ -9,18 +9,9 @@ const createWallet = async (account_id, balance) => {
     }
 };
 
-const getWalletByAccountId = async (accountId) => {
+const getWalletByAccountId = async ({account_id}) => {
     try {
-        const wallet = await walletRepository.getWalletByAccountId(accountId);
-        return wallet;
-    } catch (error) {
-        throw new Error('Error fetching wallet');
-    }
-};
-
-const getWalletByWalletId = async (accountId, wallet_id) => {
-    try {
-        const wallet = await walletRepository.getWalletById(accountId, wallet_id);
+        const wallet = await walletRepository.getWalletByAccountId({account_id});
         return wallet;
     } catch (error) {
         throw new Error('Error fetching wallet');
@@ -56,7 +47,6 @@ const getTotalBalanceByAccountId = async (account_id) => {
 module.exports = {
     createWallet,
     getWalletByAccountId,
-    getWalletByWalletId,
     updateWalletBalance,
     deleteWallet,
     getTotalBalanceByAccountId

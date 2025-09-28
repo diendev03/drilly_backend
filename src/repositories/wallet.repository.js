@@ -1,7 +1,7 @@
 const dbPromise = require('../config/database');
 
 const getConnection = async () => {
-  return await dbPromise;
+    return await dbPromise;
 };
 
 const createWallet = async (account_id, balance) => {
@@ -12,31 +12,27 @@ const createWallet = async (account_id, balance) => {
     );
 };
 
-const getWalletByAccountId = async (account_id) => {
+const getWalletByAccountId = async ({ account_id }) => {
     const conn = await getConnection();
     const [rows] = await conn.query(
         'SELECT * FROM wallet WHERE account_id = ?',
         [account_id]
     );
-    return rows;
-};
-
-const getWalletById = async (account_id,wallet_id) => {
-    const conn = await getConnection();
-    const [rows] = await conn.query(
-        'SELECT * FROM wallet WHERE account_id = ? AND id = ?',
-        [account_id,wallet_id]
-    );
     return rows[0];
 };
 
 const updateWalletBalance = async (account_id, wallet_id, new_balance) => {
+    console.log('=== Update Wallet Balance ===');
+    console.log('Account ID:', account_id);
+    console.log('Wallet ID:', wallet_id);
+    console.log('New Balance:', new_balance);
+    if (!wallet_id) throw new Error("wallet_id is missing");
+
     const conn = await getConnection();
-    const [rows] = await conn.execute(
-        'UPDATE wallet SET balance = ?, updated_at = NOW() WHERE account_id = ? AND id = ?',
-        [new_balance, account_id, wallet_id]
+    await conn.query(
+        'UPDATE wallet SET balance = ? WHERE id = ? AND account_id = ?',
+        [new_balance, wallet_id, account_id]
     );
-    return rows.affectedRows > 0;
 };
 
 const deleteWalletByAccountId = async (account_id, wallet_id) => {
@@ -48,19 +44,18 @@ const deleteWalletByAccountId = async (account_id, wallet_id) => {
 };
 
 const getTotalBalanceByAccountId = async (account_id) => {
-  const conn = await getConnection();
-  const [rows] = await conn.query(
-    'SELECT SUM(balance) as total_balance FROM wallet WHERE account_id = ?',
-    [account_id]
-  );
-  return rows[0]?.total_balance || 0;
+    const conn = await getConnection();
+    const [rows] = await conn.query(
+        'SELECT SUM(balance) as total_balance FROM wallet WHERE account_id = ?',
+        [account_id]
+    );
+    return rows[0]?.total_balance || 0;
 };
 
 
 module.exports = {
     createWallet,
     getWalletByAccountId,
-    getWalletById,
     updateWalletBalance,
     deleteWalletByAccountId,
     getTotalBalanceByAccountId

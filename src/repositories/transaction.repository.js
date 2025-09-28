@@ -1,41 +1,26 @@
 const dbPromise = require('../config/database');
-const walletReposotory = require('./wallet.repository');
+const walletRepository = require('./wallet.repository');
 
 // Kết nối DB
 const getConnection = async () => {
   return await dbPromise;
 };
 
+// Tạo giao dịch mới
 const createTransaction = async ({ account_id, type, category, amount, note, date, image_url }) => {
   const conn = await getConnection();
   const [result] = await conn.query(
-    'INSERT INTO transaction (account_id, type, category, amount, note, date, image_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
+    `INSERT INTO transaction (account_id, type, category, amount, note, date, image_url, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
     [account_id, type, category, amount, note, date, image_url]
   );
-  const newId = result.insertId;
 
-  // Lấy balance
-  const walletAmount = await walletReposotory.getWalletByAccountId(account_id);
-  const currentBalance = walletAmount[0]?.balance ?? 0;
-
-  // Đảm bảo amount là số
-  const amountNum = Number(amount);
-  let newAmount = currentBalance;
-
-  (type === "income") ? newAmount += amountNum : newAmount -= amountNum;
-
-  await walletReposotory.updateWalletBalance(
-    account_id,
-    walletAmount[0]?.id,
-    newAmount
-  );
-
-  // Lấy dữ liệu vừa tạo
-  const transaction = await getTransactionById({ id: newId });
+  const transaction = await getTransactionById({ account_id, id: result.insertId });
   return transaction;
 };
 
-const getTransactionsByAccount = async ({
+// Lấy danh sách giao dịch theo điều kiện
+const getTransactionsByFilter = async ({
   account_id,
   start_date,
   end_date,
@@ -47,28 +32,41 @@ const getTransactionsByAccount = async ({
 }) => {
   const conn = await getConnection();
 
-  // Bắt đầu query
   let query = `
-    SELECT * FROM transaction 
-    WHERE (? IS NULL OR account_id = ?)
-      AND (? IS NULL OR date >= ?)
-      AND (? IS NULL OR date <= ?)
-      AND (? IS NULL OR id = ?)
-      AND (? IS NULL OR type = ?) 
+    SELECT id, account_id, type, category, amount, note, date 
+    FROM transaction 
+    WHERE 1=1
   `;
+  const params = [];
 
-  const params = [
-    account_id, account_id,
-    start_date, start_date,
-    end_date, end_date,
-    id, id,
-    type, type
-  ];
+  if (account_id) {
+    query += ` AND account_id = ?`;
+    params.push(account_id);
+  }
 
-  // Nếu có categories
+  if (start_date) {
+    query += ` AND date >= ?`;
+    params.push(start_date);
+  }
+
+  if (end_date) {
+    query += ` AND date <= ?`;
+    params.push(end_date);
+  }
+
+  if (type) {
+    query += ` AND type = ?`;
+    params.push(type);
+  }
+
+  if (id) {
+    query += ` AND id = ?`;
+    params.push(id);
+  }
+
+  // Categories (IN)
   if (categories && typeof categories === 'string') {
     const categoryList = categories.split(',').map(Number).filter(id => !isNaN(id));
-
     if (categoryList.length > 0) {
       const placeholders = categoryList.map(() => '?').join(', ');
       query += ` AND category IN (${placeholders})`;
@@ -87,12 +85,29 @@ const getTransactionsByAccount = async ({
   return rows;
 };
 
+const getTransactionsMonthlyChart = async ({ account_id }) => {
+  const conn = await getConnection();
 
+  const query = `
+    SELECT id, type, amount, date
+    FROM transaction
+    WHERE account_id = ?
+      AND MONTH(date) = MONTH(CURDATE())
+      AND YEAR(date) = YEAR(CURDATE())
+    ORDER BY date ASC
+  `;
 
+  const [rows] = await conn.query(query, [account_id]);
+
+  return rows;
+};
+
+// Lấy 1 giao dịch theo ID
 const getTransactionById = async ({ account_id, id }) => {
   const conn = await getConnection();
+
   let query = `SELECT * FROM transaction WHERE id = ?`;
-  let params = [id];
+  const params = [id];
 
   if (account_id) {
     query += ` AND account_id = ?`;
@@ -103,115 +118,87 @@ const getTransactionById = async ({ account_id, id }) => {
   return rows[0];
 };
 
+// Lấy tổng thu - chi trong khoảng thời gian
 const getTransactionSummaryByAccount = async ({ account_id, start_date, end_date }) => {
   const conn = await getConnection();
-  const query = `
-        SELECT 
-            IFNULL(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS total_income,
-            IFNULL(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS total_expense
-        FROM transaction
-        WHERE account_id = ?
-          AND date >= ?
-          AND date <= ?
-    `;
-    const finalQuery = query
-  .replace("?", `'${account_id}'`)
-  .replace("?", `'${start_date}'`)
-  .replace("?", `'${end_date}'`);
 
-console.log("Final SQL:", finalQuery);
+  const query = `
+    SELECT 
+      IFNULL(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS total_income,
+      IFNULL(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS total_expense
+    FROM transaction
+    WHERE account_id = ?
+      AND date BETWEEN ? AND ?
+  `;
 
   const [rows] = await conn.query(query, [account_id, start_date, end_date]);
   return rows[0];
 };
 
-
+// Cập nhật giao dịch và ví
 const updateTransaction = async ({ id, account_id, amount, note, type }) => {
   const conn = await getConnection();
 
   // 1. Lấy thông tin giao dịch cũ
-  const oldTransaction = await getTransactionById({ id, account_id });
+  const oldTransaction = await getTransactionById({ account_id, id });
+  if (!oldTransaction) throw new Error("Transaction not found");
+
   const oldAmount = Number(oldTransaction.amount);
   const oldType = oldTransaction.type;
 
-  // 2. Lấy số dư ví hiện tại
-  const walletInfo = await walletReposotory.getWalletByAccountId(account_id);
-  const currentBalance = Number(walletInfo[0]?.balance ?? 0);
+  // 2. Lấy ví hiện tại
+  const wallet = await walletRepository.getWalletByAccountId({ account_id });
+  if (!wallet || !wallet.id) throw new Error("Wallet not found");
+
+  const currentBalance = Number(wallet.balance ?? 0);
   let newBalance = currentBalance;
 
-  // 3. Trừ giá trị cũ ra khỏi ví
-  if (oldType === "income") {
-    newBalance -= oldAmount;
-  } else {
-    newBalance += oldAmount;
-  }
+  // 3. Gỡ giá trị cũ
+  newBalance += (oldType === "income") ? -oldAmount : oldAmount;
 
-  // 4. Cộng lại giá trị mới vào ví
+  // 4. Cộng giá trị mới
   const newAmount = Number(amount);
-  if (type === "income") {
-    newBalance += newAmount;
-  } else {
-    newBalance -= newAmount;
-  }
+  newBalance += (type === "income") ? newAmount : -newAmount;
 
   // 5. Cập nhật giao dịch
   await conn.query(
-    'UPDATE transaction SET amount = ?, note = ?, type = ? WHERE account_id = ? AND id = ?',
-    [newAmount, note, type, account_id, id]
+    `UPDATE transaction SET amount = ?, note = ?, type = ? WHERE id = ? AND account_id = ?`,
+    [newAmount, note, type, id, account_id]
   );
 
-  // 6. Cập nhật số dư ví
-  await walletReposotory.updateWalletBalance(
-    account_id,
-    walletInfo[0]?.id,
-    newBalance
-  );
+  // 6. Cập nhật ví
+  await walletRepository.updateWalletBalance(account_id, wallet.id, newBalance);
 
   return await getTransactionById({ account_id, id });
 };
 
-
+// Xóa giao dịch và hoàn lại số dư
 const deleteTransaction = async ({ id, account_id }) => {
   const conn = await getConnection();
 
-  // 1. Lấy giao dịch cũ để lấy amount & type
   const oldTransaction = await getTransactionById({ id, account_id });
-  if (!oldTransaction) {
-    throw new Error("Transaction not found.");
-  }
+  if (!oldTransaction) throw new Error("Transaction not found");
 
   const amountNum = Number(oldTransaction.amount);
   const type = oldTransaction.type;
 
-  // 2. Lấy thông tin ví hiện tại
-  const walletInfo = await walletReposotory.getWalletByAccountId(account_id);
-  const currentBalance = Number(walletInfo[0]?.balance ?? 0);
-  let newBalance = currentBalance;
+  const wallet = await walletRepository.getWalletByAccountId({ account_id });
+  if (!wallet || !wallet.id) throw new Error("Wallet not found");
 
-  // 3. Cập nhật số dư
-  if (type === "income") {
-    newBalance -= amountNum;
-  } else {
-    newBalance += amountNum;
-  }
+  const currentBalance = Number(wallet.balance ?? 0);
+  const newBalance = (type === "income") ? currentBalance - amountNum : currentBalance + amountNum;
 
-  // 4. Xóa giao dịch
   const [result] = await conn.query(
-    'DELETE FROM transaction WHERE id = ? AND account_id = ?',
+    `DELETE FROM transaction WHERE id = ? AND account_id = ?`,
     [id, account_id]
   );
 
-  // 5. Cập nhật lại số dư ví
-  await walletReposotory.updateWalletBalance(
-    account_id,
-    walletInfo[0]?.id,
-    newBalance
-  );
+  await walletRepository.updateWalletBalance(account_id, wallet.id, newBalance);
 
   return result.affectedRows > 0;
 };
 
-
+// Tính tổng theo ngày hoặc tuần
 const getTotalAmountByPeriod = async ({ account_id, type, mode }) => {
   const conn = await getConnection();
 
@@ -219,27 +206,25 @@ const getTotalAmountByPeriod = async ({ account_id, type, mode }) => {
   if (mode === 'today') {
     dateCondition = `DATE(date) = CURDATE()`;
   } else if (mode === 'week') {
-    dateCondition = `YEARWEEK(date, 1) = YEARWEEK(CURDATE(), 1)`; // tuần bắt đầu từ thứ 2
+    dateCondition = `YEARWEEK(date, 1) = YEARWEEK(CURDATE(), 1)`;
   } else {
     throw new Error("Invalid mode. Use 'today' or 'week'.");
   }
 
   const query = `
-        SELECT IFNULL(SUM(amount), 0) AS total
-        FROM transaction
-        WHERE account_id = ?
-          AND type = ?
-          AND ${dateCondition}
-    `;
+    SELECT IFNULL(SUM(amount), 0) AS total
+    FROM transaction
+    WHERE account_id = ? AND type = ? AND ${dateCondition}
+  `;
 
   const [rows] = await conn.query(query, [account_id, type]);
-  return rows[0].total;
+  return rows[0]?.total ?? 0;
 };
-
 
 module.exports = {
   createTransaction,
-  getTransactionsByAccount,
+  getTransactionsByFilter,
+  getTransactionsMonthlyChart,
   getTransactionById,
   getTransactionSummaryByAccount,
   updateTransaction,
