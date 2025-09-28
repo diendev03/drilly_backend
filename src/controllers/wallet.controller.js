@@ -24,7 +24,7 @@ const getWalletByAccountId = async (req, res) => {
         return sendFail(res, 'Invalid authentication token');
     }
     try {
-        const wallet = await walletService.getWalletByAccountId(account_id);
+        const wallet = await walletService.getWalletByAccountId({account_id});
         if (wallet) {
             sendSuccess(res, 'Wallet found', wallet);
         } else {
@@ -35,28 +35,6 @@ const getWalletByAccountId = async (req, res) => {
     }
 };
 
-
-const getWallet = async (req, res) => {
-    const { wallet_id } = req.params;
-    const account_id = req.account?.account_id;
-    if (!account_id) {
-        return sendFail(res, 'Invalid authentication token');
-    }
-    if (!wallet_id) {
-        return sendFail(res, 'Invalid wallet ID');
-    }
-
-    try {
-        const wallet = await walletService.getWalletByWalletId(account_id, wallet_id);
-        if (wallet) {
-            sendSuccess(res, 'Wallet found', wallet);
-        } else {
-            sendFail(res, 'Wallet not found');
-        }
-    } catch (error) {
-        sendError(res, error);
-    }
-};
 
 const updateWallet = async (req, res) => {
     const { wallet_id } = req.params;
@@ -116,7 +94,6 @@ const getTotalBalance = async (req, res) => {
 module.exports = {
     createWallet,
     getWalletByAccountId,
-    getWallet,
     updateWallet,
     deleteWallet,
     getTotalBalance

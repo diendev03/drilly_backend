@@ -6,7 +6,6 @@ const verifyToken = (req, res, next) => {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'Thiếu hoặc sai định dạng token xác thực' });
   }
-    console.error('verify token:',authHeader);
 
   const token = authHeader.split(' ')[1];
 
