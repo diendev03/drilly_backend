@@ -19,7 +19,7 @@ const createProfile = async ({
     INSERT INTO profile (account_id, name, email, birthday, gender, my_color, avatar, location, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
   `;
-   if (!my_color || my_color.trim() === '') {
+  if (!my_color || my_color.trim() === '') {
     my_color = 'DBA507';
   }
   try {
@@ -84,9 +84,35 @@ const updateProfile = async ({
   }
 };
 
+// Tìm profile
+const findProfile = async ({ keyword }) => {
+  const db = await getConnection();
+  const query = `
+    SELECT p.account_id, p.name, p.avatar, c.id AS conversation_id
+FROM profile p
+LEFT JOIN conversation_member cm1 ON cm1.user_id = p.account_id
+LEFT JOIN conversation c 
+    ON c.id = cm1.conversation_id 
+   AND c.type = 'private'
+LEFT JOIN conversation_member cm2 
+    ON cm2.conversation_id = c.id 
+   AND cm2.user_id = ?
+WHERE p.name LIKE ?
+
+  `;
+  try {
+    const [result] = await db.execute(query, [`%${keyword}%`]);
+    return result;
+  } catch (error) {
+    console.error('❌ Lỗi findProfile:', error.message);
+    throw error;
+  }
+};
+
 module.exports = {
   createProfile,
   updateProfile,
-  getProfile
+  getProfile,
+  findProfile
 };
 // File: src/models/profile.model.js

@@ -31,8 +31,11 @@ const updateProfile = async (req, res) => {
     return sendError(res, 'Server error', error);
   }
 };
+
+// ✅ Lấy hồ sơ
 const getProfile = async (req, res) => {
   try {
+    
     const account_id = req.account?.account_id;
 
     if (!account_id) {
@@ -50,7 +53,30 @@ const getProfile = async (req, res) => {
   }
 };
 
+// ✅ Search profile
+const findProfile = async (req, res) => {
+  try {
+    
+    const account_id = req.account?.account_id;
+
+    if (!account_id) {
+      return sendFail(res, 'Invalid authentication token');
+    }
+    const { keyword } = req.query;
+
+    if (!keyword) {
+      return sendFail(res, 'Missing search keyword', []);
+    }
+
+    const profiles = await profileService.findProfile(keyword);
+    return sendSuccess(res, 'Search profiles successfully', profiles);
+  } catch (error) {
+    return sendError(res, 'Server error', error);
+  }
+};
+
 module.exports = {
   updateProfile,
-  getProfile
+  getProfile,
+  findProfile
 };

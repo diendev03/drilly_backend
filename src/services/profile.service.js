@@ -32,4 +32,9 @@ const getProfile = async (account_id) => {
   return await profileRepo.getProfile(account_id);
 }
 
-module.exports = { updateProfile, getProfile };
+// Tìm kiếm hồ sơ người dùng theo từ khóa
+const findProfile = async (keyword) => {
+  return await profileRepo.findProfile({ keyword });
+}
+
+module.exports = { updateProfile, getProfile, findProfile };
