@@ -4,6 +4,8 @@ const transactionCategoryRoute = require('./transaction_category.route');
 const transactionRoute = require('./transaction.route');
 const transactionReportRoute=require('./transaction_report.route');
 const walletRoute = require('./wallet.route');
+const conversationRoute = require('./conversation.route');
+const messageRoute = require('./message.route');
 
 const initRoutes = (app) => {
   app.use('/api/v1/user', profileRoute);
@@ -12,6 +14,8 @@ const initRoutes = (app) => {
   app.use('/api/v1/transaction', transactionRoute);
   app.use('/api/v1/transaction-report', transactionReportRoute);
   app.use('/api/v1/wallet', walletRoute);
+  app.use('/api/v1/conversation', conversationRoute);
+  app.use('/api/v1/message', messageRoute);
 };
 
 module.exports = initRoutes;

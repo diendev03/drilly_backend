@@ -5,6 +5,7 @@ const verifyToken = require('../middlewares/verifyToken');
 
 // Cập nhật profile
 router.get('/profile', verifyToken, profileController.getProfile);
+router.get('/profile/search', verifyToken, profileController.findProfile);
 router.post('/profile/update', verifyToken, profileController.updateProfile);
 
 module.exports = router;
