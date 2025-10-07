@@ -81,21 +81,16 @@ const changePassword = async (req, res) => {
   try {
     const account_id = req.account?.account_id;
     const { old_password, new_password } = req.body;
-    if (!account_id) return sendFail(res, 'Sai token xác thực',false);
-    if (!old_password) return sendFail(res, 'Thiếu mật khẩu cũ',false);
-    if (!new_password) return sendFail(res, 'Thiếu mật khẩu mới',false);
 
-    const result = await accountService.changePassword({
-      account_id: account_id,
-      old_password: old_password,
-      new_password: new_password
-    });
+    const result = await accountService.changePassword({ account_id, old_password, new_password });
+    if (!result.success) return sendFail(res, result.message, false);
 
-    return sendSuccess(res,"Change password success!",result);
+    return sendSuccess(res, "Change password success!", true);
   } catch (error) {
-    return sendError(res, 'Lỗi server', error,false);
+    return sendError(res, 'Lỗi server', error, false);
   }
 };
+
 
 module.exports = {
   createUser,
