@@ -22,22 +22,32 @@ const createConversation = async (type, title) => {
 };
 
 // ✅ Thêm thành viên
-const addMember = async (conversationId, userId, role, name) => {
-    const db = await getConnection();
-    const [result] = await db.execute(
-        `INSERT INTO conversation_member (conversation_id, user_id, name, role, join_at)
-     VALUES (?, ?, ?, ?, NOW())`,
-        [conversationId, userId, name, role]
-    );
+const addMembers = async (conversationId, userIds, role = "member") => {
+  const db = await getConnection();
 
-    return {
-        id: result.insertId,
-        conversation_id: conversationId,
-        user_id: userId,
-        name,
-        role,
-        join_at: new Date()
-    };
+  // 1️⃣ Lấy danh sách user (id + name) từ profile
+  const [profiles] = await db.query(
+    `SELECT account_id, name FROM profile WHERE account_id IN (${userIds.map(() => '?').join(',')})`,
+    userIds
+  );
+
+  if (profiles.length === 0) return [];
+
+  // 2️⃣ Build danh sách giá trị cho INSERT
+  const values = profiles.map(
+    (u) => `(${conversationId}, ${u.account_id}, ${db.escape(u.name)}, ${db.escape(role)}, NOW())`
+  ).join(',');
+
+  // 3️⃣ Insert nhiều dòng cùng lúc
+  const [result] = await db.query(`
+    INSERT INTO conversation_member (conversation_id, user_id, name, role, join_at)
+    VALUES ${values};
+  `);
+
+  return {
+    insertedCount: profiles.length,
+    conversation_id: conversationId,
+  };
 };
 
 const findPrivateConversation = async (user1, user2) => {
@@ -112,7 +122,7 @@ ORDER BY m.created_at DESC;
 
 module.exports = {
     createConversation,
-    addMember,
+    addMembers,
     findPrivateConversation,
     getConversations
 };

@@ -85,23 +85,26 @@ const updateProfile = async ({
 };
 
 // Tìm profile
-const findProfile = async ({ keyword }) => {
+const findProfile = async ({ keyword, user_id }) => {
   const db = await getConnection();
   const query = `
-    SELECT p.account_id, p.name, p.avatar, c.id AS conversation_id
-FROM profile p
-LEFT JOIN conversation_member cm1 ON cm1.user_id = p.account_id
-LEFT JOIN conversation c 
-    ON c.id = cm1.conversation_id 
-   AND c.type = 'private'
-LEFT JOIN conversation_member cm2 
-    ON cm2.conversation_id = c.id 
-   AND cm2.user_id = ?
-WHERE p.name LIKE ?
-
+    SELECT 
+      p.account_id, 
+      p.name, 
+      p.avatar, 
+      c.id AS conversation_id
+    FROM profile p
+    LEFT JOIN conversation_member cm1 ON cm1.user_id = p.account_id
+    LEFT JOIN conversation c 
+      ON c.id = cm1.conversation_id 
+      AND c.type = 'private'
+    LEFT JOIN conversation_member cm2 
+      ON cm2.conversation_id = c.id 
+      AND cm2.user_id = ?
+    WHERE p.name LIKE ?
   `;
   try {
-    const [result] = await db.execute(query, [`%${keyword}%`]);
+    const [result] = await db.execute(query, [user_id, `%${keyword}%`]);
     return result;
   } catch (error) {
     console.error('❌ Lỗi findProfile:', error.message);

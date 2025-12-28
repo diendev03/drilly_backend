@@ -1,6 +1,9 @@
 const transactionService = require('../services/transaction.service');
 const { sendSuccess, sendCreated, sendFail, sendError } = require('../utils/response');
 const pusher = require('../config/pusher');
+const accountRepository = require('../repositories/account.repository');
+const walletRepository = require('../repositories/wallet.repository');
+const categoryRepository = require('../repositories/transaction_category.reposotory');
 
 const createTransaction = async (req, res) => {
     try {
@@ -12,11 +15,34 @@ const createTransaction = async (req, res) => {
         }
         const { type, category, amount, note, date, image_url } = req.body;
         const account_id = req.account.account_id;
+
+        // Preflight validations to avoid SQL FK errors
+        const account = await accountRepository.getAccountById(account_id);
+        if (!account) return sendFail(res, 404, 'Account not found');
+
+        const categoryRow = await categoryRepository.getCategoryById(category);
+        if (!categoryRow) return sendFail(res, 400, 'Category not found');
+
+        const wallet = await walletRepository.getWalletByAccountId({ account_id });
+        if (!wallet || !wallet.id) return sendFail(res, 404, 'Wallet not found for account');
         const transaction = await transactionService.createTransaction({ account_id, type, category, amount, note, date, image_url });
-        pusher.trigger('transactions-channel', 'new-transaction', transaction);
+        // Trigger push notification but don't let Pusher errors fail the request
+        try {
+            pusher.trigger('transactions-channel', 'new-transaction', transaction);
+        } catch (pushErr) {
+            console.error('Pusher trigger failed (non-fatal):', pushErr);
+        }
         sendCreated(res, "Transaction created successfully", transaction);
     } catch (error) {
-        sendError(res, 500, 'Internal server error');
+        console.error('Error creating transaction:', error);
+        if (error && error.message && error.message.toLowerCase().includes('wallet not found')) {
+            return sendFail(res, 404, 'Wallet not found for account');
+        }
+        // Map common SQL foreign key constraint to a clearer client error
+        if (error && (error.code === 'ER_NO_REFERENCED_ROW_2' || (error.message && error.message.toLowerCase().includes('foreign key')))) {
+            return sendFail(res, 400, 'Invalid reference: missing related record (account/category)');
+        }
+        return sendError(res, 500, 'Internal server error');
     }
 };
 

@@ -101,6 +101,13 @@ const deleteCategory = async (id) => {
   return result.affectedRows>0;
 };
 
+// Lấy category theo ID
+const getCategoryById = async (id) => {
+  const db = await getConnection();
+  const [rows] = await db.execute('SELECT * FROM transaction_category WHERE id = ? LIMIT 1', [id]);
+  return rows.length ? rows[0] : null;
+};
+
 module.exports = {
   createCategory,
   getAllCategories,
@@ -108,4 +115,5 @@ module.exports = {
   searchCategory,
   updateCategory,
   deleteCategory,
+  getCategoryById,
 };

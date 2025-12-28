@@ -4,7 +4,7 @@ const { sendCreated,sendSuccess, sendFail, sendError } = require('../utils/respo
 // ✅ Cập nhật hồ sơ
 const updateProfile = async (req, res) => {
   try {
-    const { name, birthday, gender, my_color, avatar, bio, location } = req.body;
+    const { name, email, birthday, gender, my_color, avatar, bio, location } = req.body;
     const account_id = req.account?.account_id;
 
     if (!account_id) {
@@ -68,7 +68,7 @@ const findProfile = async (req, res) => {
       return sendFail(res, 'Missing search keyword', []);
     }
 
-    const profiles = await profileService.findProfile(keyword);
+    const profiles = await profileService.findProfile({ keyword, user_id: account_id });
     return sendSuccess(res, 'Search profiles successfully', profiles);
   } catch (error) {
     return sendError(res, 'Server error', error);

@@ -20,54 +20,63 @@ const sendMessage = async (conversationId, senderId, content) => {
     };
 };
 
-
-// ✅ Get messages
-const getMessages = async (conversationId, userId, page = 1, limit = 50) => {
+// ✅ Get messages (chỉ trả về danh sách message)
+const getMessages = async ({ conversationId, userId, page = 1, limit = 50 }) => {
   const db = await getConnection();
-  const offset = (page - 1) * limit;
-  const safeLimit = parseInt(limit, 10) || 50;
-  const safeOffset = parseInt(offset, 10) || 0;
 
-  const query = `
+  const safeLimit = Number(limit) > 0 ? Number(limit) : 50;
+  const safePage = Number(page) > 0 ? Number(page) : 1;
+  const safeOffset = (safePage - 1) * safeLimit;
+
+  let convId = conversationId ? Number(conversationId) : null;
+
+  // 🔹 Nếu chưa có convId → tìm cuộc trò chuyện private giữa 2 user
+  if (!convId) {
+    const [existing] = await db.execute(
+      `
+      SELECT c.id
+      FROM conversation c
+      JOIN conversation_member m1 ON c.id = m1.conversation_id
+      JOIN conversation_member m2 ON c.id = m2.conversation_id
+      WHERE c.type = 'private'
+        AND m1.user_id = ?
+        AND m2.user_id != ?
+      LIMIT 1
+      `,
+      [Number(userId), Number(userId)]
+    );
+
+    if (existing.length > 0) {
+      convId = Number(existing[0].id);
+    } else {
+      return [];
+    }
+  }
+
+  if (!convId || isNaN(convId)) {
+    console.warn("⚠️ convId invalid:", convId);
+    return [];
+  }
+
+  // 🔹 Lấy danh sách tin nhắn
+  const [rows] = await db.query(
+    `
     SELECT 
-      p.account_id AS receiver_id,
-      p.name AS receiver_name,
-      p.avatar AS receiver_avatar,
-      m.id AS message_id,
+      m.id,
       m.sender_id,
+      m.conversation_id,
       m.content,
-      m.created_at,
-      CASE WHEN m.sender_id = ? THEN TRUE ELSE FALSE END AS is_me
+      m.created_at
     FROM messages m
-    JOIN conversation_member cm ON cm.conversation_id = m.conversation_id
-    JOIN profile p ON p.account_id = cm.user_id
     WHERE m.conversation_id = ?
-      AND cm.user_id != ?
     ORDER BY m.created_at DESC
     LIMIT ${safeLimit} OFFSET ${safeOffset};
-  `;
+    `,
+    [convId]
+  );
 
-  // chỉ còn 3 placeholder => 3 giá trị
-  const [rows] = await db.execute(query, [Number(userId), Number(conversationId), Number(userId)]);
-
-  if (!rows.length) return null;
-
-  const receiver = {
-    receiver_id: rows[0].receiver_id,
-    receiver_name: rows[0].receiver_name,
-    receiver_avatar: rows[0].receiver_avatar,
-
-  };
-
-  const messages = rows.map((r) => ({
-    id: r.message_id,
-    sender_id: r.sender_id,
-    content: r.content,
-    created_at: r.created_at,
-    is_me: !!r.is_me,
-  }));
-
-  return { ...receiver, messages: messages.reverse() };
+  // 🔹 Đảo ngược thứ tự để tin cũ nhất ở trên cùng
+  return (rows || []).reverse();
 };
 
 

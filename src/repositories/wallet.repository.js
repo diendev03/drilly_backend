@@ -22,10 +22,6 @@ const getWalletByAccountId = async ({ account_id }) => {
 };
 
 const updateWalletBalance = async (account_id, wallet_id, new_balance) => {
-    console.log('=== Update Wallet Balance ===');
-    console.log('Account ID:', account_id);
-    console.log('Wallet ID:', wallet_id);
-    console.log('New Balance:', new_balance);
     if (!wallet_id) throw new Error("wallet_id is missing");
 
     const conn = await getConnection();

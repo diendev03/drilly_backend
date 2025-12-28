@@ -1,0 +1,82 @@
+const jwt = require("jsonwebtoken");
+const { SocketManager } = require("./socket.manager");
+const SocketEvent = require("./socket.events");
+
+const userSockets = new Map();
+
+module.exports = (io, socket) => {
+
+  const token = socket.handshake.headers.authorization?.split(" ")[1];
+  let userId = null;
+
+  // ✅ Xác thực token
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      userId = decoded.account_id;
+
+      if (userId) {
+        if (!userSockets.has(userId)) userSockets.set(userId, new Set());
+        userSockets.get(userId).add(socket.id);
+
+        SocketManager.joinDefaultRooms(socket, userId);
+      }
+    } catch {
+      console.warn("⚠️ Invalid token in socket handshake");
+    }
+  }
+
+  // ✅ Khi user join room chat cụ thể
+  socket.on(SocketEvent.JOIN_ROOM, (conversationId) => {
+    socket.join(`conv:${conversationId}`);
+    console.log(`👥 User ${userId} joined room conv:${conversationId}`);
+  });
+
+  // ✅ Khi user gửi tin nhắn
+  socket.on(SocketEvent.SEND_MESSAGE, (data) => {
+    const { roomId, senderId, receiverId, content } = data;
+    if (!roomId || !content) return;
+
+    const message = {
+      senderId,
+      receiverId,
+      content,
+      roomId,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log(`💌 Message from ${senderId} → conv:${roomId}:`, content);
+
+    // 1️⃣ Gửi tin nhắn tới room chat
+    SocketManager.emitToConversation(roomId, SocketEvent.RECEIVE_MESSAGE, message);
+
+    // 2️⃣ Cập nhật last message
+    SocketManager.emitToUser(senderId, SocketEvent.UPDATE_LAST_MESSAGE, message);
+    SocketManager.emitToUser(receiverId, SocketEvent.UPDATE_LAST_MESSAGE, message);
+  });
+
+  // ✅ Khi user đang nhập (typing)
+  socket.on(SocketEvent.TYPING, (data) => {
+    const { conversationId, senderId } = data;
+    if (!conversationId || !senderId) return;
+
+    const typingEvent = {
+      conversationId,
+      senderId,
+      timestamp: new Date().toISOString(),
+    };
+
+    SocketManager.emitToConversation(conversationId, SocketEvent.TYPING, typingEvent);
+  });
+
+  // ✅ Khi user ngắt kết nối
+  socket.on(SocketEvent.DISCONNECT, () => {
+    if (userId && userSockets.has(userId)) {
+      userSockets.get(userId).delete(socket.id);
+      if (!userSockets.get(userId).size) userSockets.delete(userId);
+    }
+    console.log(`❌ Socket ${socket.id} disconnected from user ${userId}`);
+  });
+};
+
+module.exports.userSockets = userSockets;

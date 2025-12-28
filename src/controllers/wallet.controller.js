@@ -2,7 +2,7 @@ const walletService = require('../services/wallet.service');
 const { sendCreated, sendSuccess, sendFail, sendError } = require('../utils/response');
 
 const createWallet = async (req, res) => {
-    const balance = req.body;
+    const { balance } = req.body || {};
     const account_id = req.account?.account_id;
     if (!account_id) {
         return sendFail(res, 'Invalid authentication token');

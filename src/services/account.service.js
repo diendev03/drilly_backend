@@ -34,14 +34,15 @@ const login = async ({ email, password }) => {
   if (!ok) throw new Error('Mật khẩu không chính xác');
 
   const payload = { account_id: account.id, email: account.email };
-  
   const tokens = generateTokens(payload); // { accessToken, refreshToken }
 
-  // Lưu refresh token vào DB để quản lý
-  // await accountRepository.saveRefreshToken(account.id, tokens.refreshToken);
-console.log('token: $tokens');
-  return tokens;
+  return {
+    account_id: account.id,
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+  };
 };
+
 
 //Refresh token
 const refreshToken = async ({ refresh_token }) => {
@@ -50,7 +51,7 @@ const refreshToken = async ({ refresh_token }) => {
   if (!stored) throw new Error('Refresh token không hợp lệ');
 
   try {
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const decoded = jwt.verify(refresh_token, process.env.JWT_REFRESH_SECRET);
 
     const payload = { account_id: decoded.account_id, email: decoded.email };
     const tokens = generateTokens(payload);

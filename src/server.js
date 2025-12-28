@@ -2,6 +2,8 @@ const { spawn } = require('child_process');
 const path = require('path');
 const app = require('./app');
 require('dotenv').config();
+const sockets = require('./sockets');
+
 
 const PORT = process.env.PORT || 3000;
 
@@ -11,6 +13,8 @@ const tunnelPath = '"C:\\Program Files\\cloudflared\\cloudflared.exe"';
 // Tạo server
 const server = app.listen(PORT, () => {
   console.log(`✅ Server đang chạy tại http://localhost:${PORT}`);
+
+  sockets.initSocket(server);
 
   // Cloudflare Tunnel
   const tunnel = spawn(`${tunnelPath} tunnel run drill-tunnel`, { shell: true });

@@ -5,11 +5,10 @@ config:
       arrivalRate: 200    # 50 requests mỗi giây
   defaults:
     headers:
-      Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjozNCwiZW1haWwiOiJsbnRnYW1lMTIzQGdtYWlsLmNvbSIsImlhdCI6MTc1Nzg2NTkzOCwiZXhwIjoxNzU4NDcwNzM4fQ.mps_324JjZScQIgtXi05GImxa5HU9DH8EORUvr_HFhs"
-scenarios:
+      Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjozMywiZW1haWwiOiJkaWVuZGV2dkBnbWFpbC5jb20iLCJpYXQiOjE3NjIwMTU0MjcsImV4cCI6MTc2MjYyMDIyN30.Pyj0hftL3fQWHVqKVww6e0Pw7jLshhwBwLhKoNn_kYg"
   - flow:
       - get:
-          url: "/api/v1/transaction/summary?start_date=2025-09-01&end_date=2025-09-20"
+          url: "/api/v1/transaction"
 
 
 # use:

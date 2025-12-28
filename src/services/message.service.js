@@ -1,61 +1,59 @@
 const conversationRepo = require("../repositories/conversation.repository");
-const profileRepo = require("../repositories/profile.repository");
 const messageRepo = require("../repositories/message.repository");
 
+// ✅ Gửi tin nhắn (tối ưu)
 const sendMessage = async ({ senderId, receiverId, conversationId, content }) => {
-  let convId = conversationId;
-  let type = null;
+  try {
+    if (!content?.trim()) throw new Error("Nội dung tin nhắn không hợp lệ");
 
-  // ✅ Nếu có receiverId → xác định là private chat
-  if (receiverId) {
-    type = "private";
+    let convId = Number(conversationId) || null;
 
-    // 🔍 Kiểm tra xem đã có cuộc hội thoại private giữa 2 user chưa
-    const existingConv = await conversationRepo.findPrivateConversation(senderId, receiverId);
+    // 🔹 1️⃣ Nếu chưa có conversationId → tìm hoặc tạo mới cuộc trò chuyện private
+    if (!convId) {
+      if (!receiverId) throw new Error("Thiếu receiverId khi chưa có conversationId");
 
-    if (existingConv) {
-      convId = existingConv.id;
-    } else {
-      // 🆕 Tạo mới conversation private
-      const conv = await conversationRepo.createConversation("private", null);
+      // Tìm cuộc trò chuyện private giữa 2 user
+      const existingConv = await conversationRepo.findPrivateConversation(senderId, receiverId);
 
-      const senderName = await profileRepo.getName(senderId);
-      const receiverName = await profileRepo.getName(receiverId);
-
-      await conversationRepo.addMember(conv.id, senderId, "member", senderName || "Unknown");
-      await conversationRepo.addMember(conv.id, receiverId, "member", receiverName || "Unknown");
-
-      convId = conv.id;
+      if (existingConv) {
+        convId = existingConv.id;
+      } else {
+        // Tạo mới cuộc trò chuyện và thêm 2 thành viên
+        const conv = await conversationRepo.createConversation("private", null);
+        await conversationRepo.addMembers(conv.id, [senderId, receiverId], "member");
+        convId = conv.id;
+      }
     }
+
+    // 🔹 2️⃣ Gửi tin nhắn
+    const message = await messageRepo.sendMessage(convId, senderId, content.trim());
+
+    // 🔹 3️⃣ Trả về dữ liệu đồng nhất
+    return {
+      id: message.id,
+      sender_id: senderId,
+      conversation_id: convId,
+      content: message.content,
+      created_at: message.created_at,
+    };
+  } catch (error) {
+    console.error('message.service.sendMessage error:', error);
+    throw error;
   }
-
-  // ✅ Nếu không có receiverId → dùng conversationId (group/channel)
-  if (!receiverId) {
-    if (!convId) throw new Error("conversationId is required when no receiverId provided");
-
-    // Lấy type từ DB (để xác định group / channel)
-    const conv = await conversationRepo.getConversationById(convId);
-    if (!conv) throw new Error("Conversation not found");
-
-    type = conv.type;
-  }
-
-  // ✅ Gửi tin nhắn
-  const message = await messageRepo.sendMessage(convId, senderId, content);
-
-  return {
-    ...message,
-    conversation_id: convId,
-    is_me: true,
-  };
 };
 
 
-const getMessages = async (conversationId, userId, page = 1, limit = 50) => {
-    return await messageRepo.getMessages(conversationId, userId, page, limit);
-};;
+
+const getMessages = async ({conversationId, userId, page = 1, limit = 50}) => {
+  try {
+    return await messageRepo.getMessages({conversationId, userId, page, limit});
+  } catch (error) {
+    console.error('message.service.getMessages error:', error);
+    throw error;
+  }
+};
 
 module.exports = {
-    sendMessage,
-    getMessages
+  sendMessage,
+  getMessages,
 };
