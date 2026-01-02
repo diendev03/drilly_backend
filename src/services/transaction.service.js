@@ -1,22 +1,10 @@
 const transactionRepo = require('../repositories/transaction.repository');
 const walletReposotory = require('../repositories/wallet.repository');
 
-const createTransaction = async ({ account_id, type, category, amount, note, date, image_url }) => {
+const createTransaction = async ({ account_id, wallet_id, type, category, amount, note, date, images }) => {
     try {
-        const transaction = await transactionRepo.createTransaction({ account_id, type, category, amount, note, date, image_url });
-        // Recalculate wallet in a non-fatal way: if recalculation fails, log it but still return created transaction.
-        try {
-            await recalculateWalletAfterTransactionChange({
-                account_id,
-                oldAmount: 0,
-                oldType: null,
-                newAmount: Number(amount),
-                newType: type,
-            });
-        } catch (recalcErr) {
-            console.error('Non-fatal: wallet recalculation failed after createTransaction:', recalcErr);
-        }
-
+        // Repository now handles wallet balance update internally
+        const transaction = await transactionRepo.createTransaction({ account_id, wallet_id, type, category, amount, note, date, images });
         return transaction;
     } catch (error) {
         console.error('transaction.service.createTransaction error:', error);
@@ -24,14 +12,14 @@ const createTransaction = async ({ account_id, type, category, amount, note, dat
     }
 };
 
-const getTransactionsByFilter= async ({
-  account_id,
-  start_date,
-  end_date,
-  type,
-  categories,
-  limit,
-  offset
+const getTransactionsByFilter = async ({
+    account_id,
+    start_date,
+    end_date,
+    type,
+    categories,
+    limit,
+    offset
 }) => {
     try {
         console.log(`user ${account_id} fetching transactions`);
@@ -86,7 +74,7 @@ const getTransactionById = async ({ account_id, id }) => {
             amount: item.amount,
             note: item.note,
             date: item.date,
-            image_url: item.image_url,
+            images: item.images,
             created_at: item.created_at
         }));
         return result[0];
@@ -106,15 +94,16 @@ const getTransactionSummaryByAccount = async ({ account_id, start_date, end_date
     }
 };
 
-const updateTransaction = async ({ id, account_id, amount, note, type }) => {
+const updateTransaction = async ({ id, account_id, amount, note, type, images }) => {
     try {
         const oldTransaction = await transactionRepo.getTransactionById({ account_id, id });
         if (!oldTransaction) throw new Error("Transaction not found");
 
-        const updated = await transactionRepo.updateTransaction({ id, account_id, amount, note, type });
+        const updated = await transactionRepo.updateTransaction({ id, account_id, amount, note, type, images });
 
         await recalculateWalletAfterTransactionChange({
             account_id,
+            wallet_id: oldTransaction.wallet_id,
             oldAmount: Number(oldTransaction.amount),
             oldType: oldTransaction.type,
             newAmount: Number(amount),
@@ -123,7 +112,9 @@ const updateTransaction = async ({ id, account_id, amount, note, type }) => {
 
         return updated;
     } catch (error) {
-        console.error('transaction.service.updateTransaction error:', error);
+        if (error.message !== 'Transaction not found') {
+            console.error('transaction.service.updateTransaction error:', error);
+        }
         throw error;
     }
 };
@@ -138,6 +129,7 @@ const deleteTransaction = async ({ id, account_id }) => {
 
         await recalculateWalletAfterTransactionChange({
             account_id,
+            wallet_id: oldTransaction.wallet_id,
             oldAmount: Number(oldTransaction.amount),
             oldType: oldTransaction.type,
             newAmount: 0,
@@ -146,7 +138,9 @@ const deleteTransaction = async ({ id, account_id }) => {
 
         return deleted;
     } catch (error) {
-        console.error('transaction.service.deleteTransaction error:', error);
+        if (error.message !== 'Transaction not found') {
+            console.error('transaction.service.deleteTransaction error:', error);
+        }
         throw error;
     }
 };
@@ -155,8 +149,8 @@ const deleteTransaction = async ({ id, account_id }) => {
 
 const getTransactionSummaryBalance = async ({ account_id }) => {
     try {
-        const [balance, income_day, expense_day, income_week, expense_week] = await Promise.all([
-            walletReposotory.getWalletByAccountId({ account_id }),
+        const [totalBalance, income_day, expense_day, income_week, expense_week] = await Promise.all([
+            walletReposotory.getTotalBalanceByAccountId(account_id),
             transactionRepo.getTotalAmountByPeriod({ account_id, type: 'income', mode: 'today' }),
             transactionRepo.getTotalAmountByPeriod({ account_id, type: 'expense', mode: 'today' }),
             transactionRepo.getTotalAmountByPeriod({ account_id, type: 'income', mode: 'week' }),
@@ -164,7 +158,7 @@ const getTransactionSummaryBalance = async ({ account_id }) => {
         ]);
 
         return {
-            balance: balance?.balance ?? 0,
+            balance: totalBalance,
             income_day,
             expense_day,
             income_week,
@@ -177,18 +171,22 @@ const getTransactionSummaryBalance = async ({ account_id }) => {
 };
 
 const recalculateWalletAfterTransactionChange = async ({
-  account_id,
-  oldAmount = 0,
-  oldType = null,
-  newAmount = 0,
-  newType = null,
+    account_id,
+    wallet_id,
+    oldAmount = 0,
+    oldType = null,
+    newAmount = 0,
+    newType = null,
 }) => {
     try {
-        // Lấy ví
-        const wallet = await walletReposotory.getWalletByAccountId({ account_id });
+        if (!wallet_id) return; // Cannot update if no wallet_id
 
-        if (!wallet || !wallet.id) {
-            console.error("[Wallet] Wallet not found for account:", account_id);
+        // Lấy ví
+        const wallet = await walletReposotory.getWalletById(wallet_id);
+
+        if (!wallet) {
+            console.error("[Wallet] Wallet not found for id:", wallet_id);
+            // Should we throw? Or just log? Throwing might be safer to ensure consistency
             throw new Error("Wallet not found");
         }
 

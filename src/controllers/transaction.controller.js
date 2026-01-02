@@ -15,7 +15,12 @@ const createTransaction = async (req, res) => {
         if (!req.body || !req.body.type || !req.body.category || !req.body.amount || !req.body.date) {
             return sendFail(res, 400, 'Missing required fields');
         }
-        const { type, category, amount, note, date, image_url } = req.body;
+        const { type, category, amount, note, date, images, wallet_id } = req.body;
+
+        if (images && (!Array.isArray(images) || images.length > 2)) {
+            return sendFail(res, 400, 'Images must be an array with maximum 2 items');
+        }
+
         const account_id = req.account.account_id;
 
         // Preflight validations to avoid SQL FK errors
@@ -25,9 +30,18 @@ const createTransaction = async (req, res) => {
         const categoryRow = await categoryRepository.getCategoryById(category);
         if (!categoryRow) return sendFail(res, 400, 'Category not found');
 
-        const wallet = await walletRepository.getWalletByAccountId({ account_id });
+        // Get wallet (use specified wallet_id or default to first wallet)
+        let wallet;
+        if (wallet_id) {
+            const allWallets = await walletRepository.getAllWalletsByAccountId({ account_id });
+            wallet = allWallets.find(w => w.id === parseInt(wallet_id));
+            if (!wallet) return sendFail(res, 404, 'Wallet not found or does not belong to this account');
+        } else {
+            wallet = await walletRepository.getWalletByAccountId({ account_id });
+        }
         if (!wallet || !wallet.id) return sendFail(res, 404, 'Wallet not found for account');
-        const transaction = await transactionService.createTransaction({ account_id, type, category, amount, note, date, image_url });
+
+        const transaction = await transactionService.createTransaction({ account_id, wallet_id: wallet.id, type, category, amount, note, date, images });
         // Trigger push notification but don't let Pusher errors fail the request
         try {
             pusher.trigger('transactions-channel', 'new-transaction', transaction);
@@ -39,13 +53,15 @@ const createTransaction = async (req, res) => {
         try {
             SocketManager.emitToUser(account_id, SocketEvent.TRANSACTION_CREATED, transaction);
 
-            // Also emit updated balance and chart data
-            const [balance, chart] = await Promise.all([
+            // Also emit updated balance, chart data, and wallets
+            const [balance, chart, wallets] = await Promise.all([
                 transactionService.getTransactionSummaryBalance({ account_id }),
-                transactionService.getTransactionsMonthlyChart({ account_id })
+                transactionService.getTransactionsMonthlyChart({ account_id }),
+                walletRepository.getAllWalletsByAccountId({ account_id })
             ]);
             SocketManager.emitToUser(account_id, SocketEvent.BALANCE_UPDATED, balance);
             SocketManager.emitToUser(account_id, SocketEvent.CHART_UPDATED, chart);
+            SocketManager.emitToUser(account_id, SocketEvent.WALLETS_UPDATED, wallets);
         } catch (socketErr) {
             console.error('Socket emit failed:', socketErr);
         }
@@ -60,7 +76,7 @@ const createTransaction = async (req, res) => {
         if (error && (error.code === 'ER_NO_REFERENCED_ROW_2' || (error.message && error.message.toLowerCase().includes('foreign key')))) {
             return sendFail(res, 400, 'Invalid reference: missing related record (account/category)');
         }
-        return sendError(res, 500, 'Internal server error');
+        return sendError(res, 500, `Internal server error: ${error?.message || error}`);
     }
 };
 
@@ -163,14 +179,17 @@ const updateTransaction = async (req, res) => {
         if (!id) {
             return sendFail(res, 400, 'Transaction ID is required');
         }
-        const { amount, note, type } = req.body;
+        const { amount, note, type, images } = req.body;
+        if (images && (!Array.isArray(images) || images.length > 2)) {
+            return sendFail(res, 400, 'Images must be an array with maximum 2 items');
+        }
         if (!amount) {
             return sendFail(res, 400, 'Amount is required');
         }
         if (!type) {
             return sendFail(res, 400, 'Type is required');
         }
-        const updatedTransaction = await transactionService.updateTransaction({ id, account_id, amount, note, type });
+        const updatedTransaction = await transactionService.updateTransaction({ id, account_id, amount, note, type, images });
         if (!updatedTransaction) {
             return sendFail(res, 404, 'Transaction not found');
         }
@@ -179,19 +198,24 @@ const updateTransaction = async (req, res) => {
         try {
             SocketManager.emitToUser(account_id, SocketEvent.TRANSACTION_UPDATED, updatedTransaction);
 
-            // Also emit updated balance and chart data
-            const [balance, chart] = await Promise.all([
+            // Also emit updated balance, chart data, and wallets
+            const [balance, chart, wallets] = await Promise.all([
                 transactionService.getTransactionSummaryBalance({ account_id }),
-                transactionService.getTransactionsMonthlyChart({ account_id })
+                transactionService.getTransactionsMonthlyChart({ account_id }),
+                walletRepository.getAllWalletsByAccountId({ account_id })
             ]);
             SocketManager.emitToUser(account_id, SocketEvent.BALANCE_UPDATED, balance);
             SocketManager.emitToUser(account_id, SocketEvent.CHART_UPDATED, chart);
+            SocketManager.emitToUser(account_id, SocketEvent.WALLETS_UPDATED, wallets);
         } catch (socketErr) {
             console.error('Socket emit failed:', socketErr);
         }
 
         sendSuccess(res, "Transaction updated successfully", updatedTransaction);
     } catch (error) {
+        if (error.message === 'Transaction not found') {
+            return sendFail(res, 404, 'Transaction not found');
+        }
         console.error('Error updating transaction:', error);
         sendError(res, 500, 'Internal server error');
     }
@@ -216,19 +240,24 @@ const deleteTransaction = async (req, res) => {
         try {
             SocketManager.emitToUser(account_id, SocketEvent.TRANSACTION_DELETED, { id: transactionId });
 
-            // Also emit updated balance and chart data
-            const [balance, chart] = await Promise.all([
+            // Also emit updated balance, chart data, and wallets
+            const [balance, chart, wallets] = await Promise.all([
                 transactionService.getTransactionSummaryBalance({ account_id }),
-                transactionService.getTransactionsMonthlyChart({ account_id })
+                transactionService.getTransactionsMonthlyChart({ account_id }),
+                walletRepository.getAllWalletsByAccountId({ account_id })
             ]);
             SocketManager.emitToUser(account_id, SocketEvent.BALANCE_UPDATED, balance);
             SocketManager.emitToUser(account_id, SocketEvent.CHART_UPDATED, chart);
+            SocketManager.emitToUser(account_id, SocketEvent.WALLETS_UPDATED, wallets);
         } catch (socketErr) {
             console.error('Socket emit failed:', socketErr);
         }
 
         sendSuccess(res, "Transaction deleted successfully", deleted);
     } catch (error) {
+        if (error.message === 'Transaction not found') {
+            return sendFail(res, 404, 'Transaction not found');
+        }
         console.error('Error deleting transaction:', error);
         sendError(res, 500, 'Internal server error');
     }

@@ -21,6 +21,7 @@ module.exports = Object.freeze({
   TRANSACTION_DELETED: "transaction_deleted",
   BALANCE_UPDATED: "balance_updated",
   CHART_UPDATED: "chart_updated",
+  WALLETS_UPDATED: "wallets_updated",
 
   // 📂 Category
   CATEGORY_CREATED: "category_created",

@@ -2,7 +2,7 @@ const walletService = require('../services/wallet.service');
 const { sendCreated, sendSuccess, sendFail, sendError } = require('../utils/response');
 
 const createWallet = async (req, res) => {
-    const { balance } = req.body || {};
+    const { balance, name } = req.body || {};
     const account_id = req.account?.account_id;
     if (!account_id) {
         return sendFail(res, 'Invalid authentication token');
@@ -10,8 +10,11 @@ const createWallet = async (req, res) => {
     if (balance == null || isNaN(balance) || balance < 0) {
         return sendFail(res, 'Invalid wallet balance');
     }
+    if (!name || name.trim() === '') {
+        return sendFail(res, 'Wallet name is required');
+    }
     try {
-        const wallet = await walletService.createWallet(account_id, balance);
+        const wallet = await walletService.createWallet(account_id, balance, name);
         sendCreated(res, "Wallet created successfully", wallet);
     } catch (error) {
         sendError(res, error);
@@ -24,7 +27,7 @@ const getWalletByAccountId = async (req, res) => {
         return sendFail(res, 'Invalid authentication token');
     }
     try {
-        const wallet = await walletService.getWalletByAccountId({account_id});
+        const wallet = await walletService.getWalletByAccountId({ account_id });
         if (wallet) {
             sendSuccess(res, 'Wallet found', wallet);
         } else {
@@ -35,10 +38,23 @@ const getWalletByAccountId = async (req, res) => {
     }
 };
 
+const getAllWallets = async (req, res) => {
+    const account_id = req.account?.account_id;
+    if (!account_id) {
+        return sendFail(res, 'Invalid authentication token');
+    }
+    try {
+        const wallets = await walletService.getAllWalletsByAccountId({ account_id });
+        sendSuccess(res, 'Wallets fetched successfully', wallets);
+    } catch (error) {
+        sendError(res, error);
+    }
+};
+
 
 const updateWallet = async (req, res) => {
     const { wallet_id } = req.params;
-    const { new_balance } = req.body;
+    const { new_balance, name } = req.body;
     const account_id = req.account?.account_id;
     if (!account_id) {
         return sendFail(res, 'Invalid authentication token');
@@ -46,11 +62,11 @@ const updateWallet = async (req, res) => {
     if (!wallet_id) {
         return sendFail(res, 'Invalid wallet ID');
     }
-    if (new_balance == null || isNaN(new_balance) || new_balance < 0) {
+    if (new_balance != null && (isNaN(new_balance) || new_balance < 0)) {
         return sendFail(res, 'Invalid wallet balance');
     }
     try {
-        const wallet = await walletService.updateWalletBalance(account_id, wallet_id, new_balance);
+        const wallet = await walletService.updateWallet(account_id, wallet_id, new_balance, name);
         if (wallet) {
             sendSuccess(res, `Wallet ${wallet_id} by user ${account_id} with new balance ${new_balance} updated successfully`, {});
         } else {
@@ -85,7 +101,7 @@ const getTotalBalance = async (req, res) => {
     }
     try {
         const total_balance = await walletService.getTotalBalanceByAccountId(account_id);
-        sendSuccess(res, 'Total balance fetched successfully',{total_balance});
+        sendSuccess(res, 'Total balance fetched successfully', { total_balance });
     } catch (error) {
         sendError(res, error);
     }
@@ -94,6 +110,7 @@ const getTotalBalance = async (req, res) => {
 module.exports = {
     createWallet,
     getWalletByAccountId,
+    getAllWallets,
     updateWallet,
     deleteWallet,
     getTotalBalance
