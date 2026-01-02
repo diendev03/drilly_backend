@@ -25,6 +25,7 @@ class SocketManager {
     socket.join(ROOM.GLOBAL);
     socket.join(ROOM.USER(userId));
     socket.join(ROOM.NOTIFY(userId));
+    console.log(`🔌 User ${userId} joined rooms: ${ROOM.GLOBAL}, ${ROOM.USER(userId)}, ${ROOM.NOTIFY(userId)}`);
   }
 
   // --- EMIT ---
@@ -33,6 +34,7 @@ class SocketManager {
   }
 
   static emitToUser(userId, event, payload) {
+    console.log(`📤 Emitting ${event} to room ${ROOM.USER(userId)}`);
     this.io.to(ROOM.USER(userId)).emit(event, payload);
   }
 

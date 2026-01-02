@@ -4,6 +4,8 @@ const pusher = require('../config/pusher');
 const accountRepository = require('../repositories/account.repository');
 const walletRepository = require('../repositories/wallet.repository');
 const categoryRepository = require('../repositories/transaction_category.reposotory');
+const { SocketManager } = require('../sockets/socket.manager');
+const SocketEvent = require('../sockets/socket.events');
 
 const createTransaction = async (req, res) => {
     try {
@@ -32,6 +34,22 @@ const createTransaction = async (req, res) => {
         } catch (pushErr) {
             console.error('Pusher trigger failed (non-fatal):', pushErr);
         }
+
+        // 🔌 Socket.IO emit
+        try {
+            SocketManager.emitToUser(account_id, SocketEvent.TRANSACTION_CREATED, transaction);
+
+            // Also emit updated balance and chart data
+            const [balance, chart] = await Promise.all([
+                transactionService.getTransactionSummaryBalance({ account_id }),
+                transactionService.getTransactionsMonthlyChart({ account_id })
+            ]);
+            SocketManager.emitToUser(account_id, SocketEvent.BALANCE_UPDATED, balance);
+            SocketManager.emitToUser(account_id, SocketEvent.CHART_UPDATED, chart);
+        } catch (socketErr) {
+            console.error('Socket emit failed:', socketErr);
+        }
+
         sendCreated(res, "Transaction created successfully", transaction);
     } catch (error) {
         console.error('Error creating transaction:', error);
@@ -156,6 +174,22 @@ const updateTransaction = async (req, res) => {
         if (!updatedTransaction) {
             return sendFail(res, 404, 'Transaction not found');
         }
+
+        // 🔌 Socket.IO emit
+        try {
+            SocketManager.emitToUser(account_id, SocketEvent.TRANSACTION_UPDATED, updatedTransaction);
+
+            // Also emit updated balance and chart data
+            const [balance, chart] = await Promise.all([
+                transactionService.getTransactionSummaryBalance({ account_id }),
+                transactionService.getTransactionsMonthlyChart({ account_id })
+            ]);
+            SocketManager.emitToUser(account_id, SocketEvent.BALANCE_UPDATED, balance);
+            SocketManager.emitToUser(account_id, SocketEvent.CHART_UPDATED, chart);
+        } catch (socketErr) {
+            console.error('Socket emit failed:', socketErr);
+        }
+
         sendSuccess(res, "Transaction updated successfully", updatedTransaction);
     } catch (error) {
         console.error('Error updating transaction:', error);
@@ -177,6 +211,22 @@ const deleteTransaction = async (req, res) => {
         if (!deleted) {
             return sendFail(res, 404, 'Transaction not found');
         }
+
+        // 🔌 Socket.IO emit
+        try {
+            SocketManager.emitToUser(account_id, SocketEvent.TRANSACTION_DELETED, { id: transactionId });
+
+            // Also emit updated balance and chart data
+            const [balance, chart] = await Promise.all([
+                transactionService.getTransactionSummaryBalance({ account_id }),
+                transactionService.getTransactionsMonthlyChart({ account_id })
+            ]);
+            SocketManager.emitToUser(account_id, SocketEvent.BALANCE_UPDATED, balance);
+            SocketManager.emitToUser(account_id, SocketEvent.CHART_UPDATED, chart);
+        } catch (socketErr) {
+            console.error('Socket emit failed:', socketErr);
+        }
+
         sendSuccess(res, "Transaction deleted successfully", deleted);
     } catch (error) {
         console.error('Error deleting transaction:', error);

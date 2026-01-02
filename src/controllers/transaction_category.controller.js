@@ -1,5 +1,7 @@
 const transactionService = require('../services/transaction_category.service');
 const { sendSuccess, sendCreated, sendFail, sendError } = require('../utils/response');
+const { SocketManager } = require('../sockets/socket.manager');
+const SocketEvent = require('../sockets/socket.events');
 
 const createCategory = async (req, res) => {
     try {
@@ -20,6 +22,14 @@ const createCategory = async (req, res) => {
             color,
             owner_id,
         });
+
+
+        // 🔌 Socket.IO emit
+        try {
+            SocketManager.emitToUser(owner_id, SocketEvent.CATEGORY_CREATED, newCategory);
+        } catch (socketErr) {
+            console.error('Socket emit failed:', socketErr);
+        }
 
         return sendCreated(res, 'Created successfully', newCategory);
     } catch (error) {
@@ -46,7 +56,7 @@ const getCategoriesByOwner = async (req, res) => {
             return sendError(res, 401, 'Unauthorized');
         }
         const account_id = req.account.account_id;
-        const categories = await transactionService.getCategoriesByOwner({account_id});
+        const categories = await transactionService.getCategoriesByOwner({ account_id });
         return sendSuccess(res, 'Success', categories);
     } catch (error) {
         sendError(res, error);
@@ -64,38 +74,53 @@ const searchCategory = async (req, res) => {
 };
 
 const updateCategory = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, icon} = req.body;
+    try {
+        const { id } = req.params;
+        const { name, icon } = req.body;
 
-    if (!id) return sendFail(res, 'Thiếu ID danh mục');
+        if (!id) return sendFail(res, 'Thiếu ID danh mục');
 
-    if (!name && !icon) {
-      return sendFail(res, 'Không có thông tin cập nhật');
+        if (!name && !icon) {
+            return sendFail(res, 'Không có thông tin cập nhật');
+        }
+
+        const result = await transactionService.updateCategory(id, { name, icon });
+        const owner_id = req.account?.account_id;
+
+        // 🔌 Socket.IO emit
+        try {
+            SocketManager.emitToUser(owner_id, SocketEvent.CATEGORY_UPDATED, { id, name, icon, ...result });
+        } catch (socketErr) {
+            console.error('Socket emit failed:', socketErr);
+        }
+
+        return sendSuccess(res, 'Updated successfully', result);
+    } catch (error) {
+        sendError(res, error);
     }
-
-   const result = await transactionService.updateCategory(id, { name,icon });
-
-    return sendSuccess(res, 'Updated successfully', result);
-  } catch (error) {
-    sendError(res, error);
-  }
 };
 
 const deleteCategory = async (req, res) => {
-  try {
-    const account_id = req.account?.account_id;
-    const { id } = req.params;
+    try {
+        const account_id = req.account?.account_id;
+        const { id } = req.params;
 
-    if (!id) return sendFail(res, 'Thiếu ID danh mục');
-    if (!account_id) return sendFail(res, 'Thiếu account_id');
+        if (!id) return sendFail(res, 'Thiếu ID danh mục');
+        if (!account_id) return sendFail(res, 'Thiếu account_id');
 
-    const result = await transactionService.deleteCategory({ account_id, id });
+        const result = await transactionService.deleteCategory({ account_id, id });
 
-    return sendSuccess(res, 'Xóa thành công', result);
-  } catch (error) {
-    sendError(res, error.message || 'Lỗi hệ thống');
-  }
+        // 🔌 Socket.IO emit
+        try {
+            SocketManager.emitToUser(account_id, SocketEvent.CATEGORY_DELETED, { id });
+        } catch (socketErr) {
+            console.error('Socket emit failed:', socketErr);
+        }
+
+        return sendSuccess(res, 'Xóa thành công', result);
+    } catch (error) {
+        sendError(res, error.message || 'Lỗi hệ thống');
+    }
 };
 
 
