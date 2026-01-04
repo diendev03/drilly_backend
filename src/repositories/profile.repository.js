@@ -84,15 +84,21 @@ const updateProfile = async ({
   }
 };
 
-// Tìm profile
+// Tìm profile (includes follow status, excludes blocked users)
 const findProfile = async ({ keyword, user_id }) => {
   const db = await getConnection();
   const query = `
     SELECT 
       p.account_id, 
       p.name, 
-      p.avatar, 
-      c.id AS conversation_id
+      p.avatar,
+      c.id AS conversation_id,
+      CASE 
+        WHEN f1.id IS NOT NULL AND f2.id IS NOT NULL THEN 'mutual'
+        WHEN f1.id IS NOT NULL THEN 'following'
+        WHEN f2.id IS NOT NULL THEN 'followed'
+        ELSE 'none'
+      END AS follow_status
     FROM profile p
     LEFT JOIN conversation_member cm1 ON cm1.user_id = p.account_id
     LEFT JOIN conversation c 
@@ -101,10 +107,24 @@ const findProfile = async ({ keyword, user_id }) => {
     LEFT JOIN conversation_member cm2 
       ON cm2.conversation_id = c.id 
       AND cm2.user_id = ?
-    WHERE p.name LIKE ?
+    LEFT JOIN user_follow f1 ON f1.follower_id = ? AND f1.following_id = p.account_id
+    LEFT JOIN user_follow f2 ON f2.follower_id = p.account_id AND f2.following_id = ?
+    LEFT JOIN user_block b ON (b.blocker_id = ? AND b.blocked_id = p.account_id)
+                           OR (b.blocker_id = p.account_id AND b.blocked_id = ?)
+    WHERE p.name LIKE ? 
+      AND p.account_id != ?
+      AND b.id IS NULL
   `;
   try {
-    const [result] = await db.execute(query, [user_id, `%${keyword}%`]);
+    const [result] = await db.execute(query, [
+      user_id,
+      user_id,
+      user_id,
+      user_id,
+      user_id,
+      `%${keyword}%`,
+      user_id
+    ]);
     return result;
   } catch (error) {
     console.error('❌ Lỗi findProfile:', error.message);

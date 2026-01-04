@@ -32,10 +32,26 @@ module.exports = (io, socket) => {
     console.log(`👥 User ${userId} joined room conv:${conversationId}`);
   });
 
+  const profileRepo = require("../repositories/profile.repository");
+  //...
+
   // ✅ Khi user gửi tin nhắn
-  socket.on(SocketEvent.SEND_MESSAGE, (data) => {
+  socket.on(SocketEvent.SEND_MESSAGE, async (data) => {
     const { roomId, senderId, receiverId, content } = data;
     if (!roomId || !content) return;
+
+    // Get Sender Profile
+    let senderName = '';
+    let senderAvatar = null;
+    try {
+      const profile = await profileRepo.getProfile(senderId);
+      if (profile) {
+        senderName = profile.name;
+        senderAvatar = profile.avatar;
+      }
+    } catch (e) {
+      console.error("Socket getProfile error:", e);
+    }
 
     const message = {
       senderId,
@@ -43,6 +59,8 @@ module.exports = (io, socket) => {
       content,
       roomId,
       timestamp: new Date().toISOString(),
+      senderName,
+      senderAvatar
     };
 
     console.log(`💌 Message from ${senderId} → conv:${roomId}:`, content);

@@ -41,7 +41,12 @@ const getConversations = async (accountId) => {
   }
 };
 
+const markAsRead = async (userId, conversationId) => {
+  return await conversationRepo.markAsRead(userId, conversationId);
+};
+
 module.exports = {
   createConversation,
-  getConversations
+  getConversations,
+  markAsRead
 };

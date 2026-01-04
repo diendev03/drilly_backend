@@ -8,4 +8,7 @@ const verifyToken = require('../middlewares/verifyToken');
 router.get('/', verifyToken, conversationController.getConversations);
 router.post('/create', verifyToken, conversationController.createConversation);
 
+// Đánh dấu đã đọc
+router.post("/:id/read", verifyToken, conversationController.markAsRead);
+
 module.exports = router;

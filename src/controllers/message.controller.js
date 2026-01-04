@@ -1,7 +1,9 @@
 const messageService = require("../services/message.service");
+const followService = require("../services/follow.service");
 const socketEvent = require("../sockets/socket.events");
 const { sendSuccess, sendFail, sendError } = require("../utils/response");
 const { SocketManager, ROOM } = require("../sockets/socket.manager");
+const profileRepo = require("../repositories/profile.repository");
 
 const sendMessage = async (req, res) => {
   try {
@@ -10,6 +12,9 @@ const sendMessage = async (req, res) => {
 
     const { receiver_id, conversation_id, content } = req.body;
     if (!content) return sendFail(res, "Content is required");
+
+
+
     // ✅ Gửi tin nhắn
     const message = await messageService.sendMessage({
       senderId,
@@ -20,15 +25,37 @@ const sendMessage = async (req, res) => {
 
     const finalConvId = message.conversation_id;
 
+    // Fetch Sender Profile for Notification
+    let senderProfile = { name: '', avatar: null };
+    try {
+      const p = await profileRepo.getProfile(senderId);
+      if (p) {
+        senderProfile.name = p.name;
+        senderProfile.avatar = p.avatar;
+      }
+    } catch (e) {
+      console.error("Fetch profile error:", e.message);
+    }
+
+    // Enrich message payload for Socket
+    const socketMessage = {
+      ...message,
+      senderId: message.sender_id, // camelCase
+      conversationId: message.conversation_id, // camelCase
+      senderName: senderProfile.name,
+      senderAvatar: senderProfile.avatar,
+      timestamp: message.created_at
+    };
+
     // ✅ Phát sự kiện socket cho toàn bộ thành viên trong phòng
     SocketManager.emitToConversation(
       finalConvId,
       socketEvent.RECEIVE_MESSAGE,
-      message
+      socketMessage
     );
 
     // ✅ Cập nhật last message
-    const updatePayload = { conversationId: finalConvId, message };
+    const updatePayload = { conversationId: finalConvId, message: socketMessage };
     SocketManager.emitToUser(
       senderId,
       socketEvent.UPDATE_LAST_MESSAGE,

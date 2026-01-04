@@ -11,9 +11,18 @@ module.exports = Object.freeze({
   RECEIVE_MESSAGE: "receive_message",
   UPDATE_LAST_MESSAGE: "update_last_message",
   TYPING: "typing",
+  MESSAGE_READ: "message_read",
 
   // 🔔 Notification
   NOTIFY: "notify",
+
+  // 👤 User Status
+  USER_ONLINE: "user_online",
+  USER_OFFLINE: "user_offline",
+
+  // 👥 Follow/Block
+  FOLLOW_UPDATE: "follow_update",
+  BLOCK_UPDATE: "block_update",
 
   // 💰 Transaction
   TRANSACTION_CREATED: "transaction_created",

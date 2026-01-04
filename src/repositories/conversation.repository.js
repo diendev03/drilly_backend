@@ -1,24 +1,24 @@
 const dbPromise = require('../config/database');
 
 const getConnection = async () => {
-    return await dbPromise;
+  return await dbPromise;
 };
 
 // ✅ Tạo conversation
 const createConversation = async (type, title) => {
-    const db = await getConnection();
-    const [result] = await db.execute(
-        `INSERT INTO conversation (type, title, created_at)
+  const db = await getConnection();
+  const [result] = await db.execute(
+    `INSERT INTO conversation (type, title, created_at)
      VALUES (?, ?, NOW())`,
-        [type, title || null]
-    );
+    [type, title || null]
+  );
 
-    return {
-        id: result.insertId,
-        type,
-        title,
-        created_at: new Date()
-    };
+  return {
+    id: result.insertId,
+    type,
+    title,
+    created_at: new Date()
+  };
 };
 
 // ✅ Thêm thành viên
@@ -51,8 +51,8 @@ const addMembers = async (conversationId, userIds, role = "member") => {
 };
 
 const findPrivateConversation = async (user1, user2) => {
-    const db = await getConnection();
-    const query = `
+  const db = await getConnection();
+  const query = `
     SELECT c.*
     FROM conversation c
     JOIN conversation_member m1 ON c.id = m1.conversation_id
@@ -62,8 +62,8 @@ const findPrivateConversation = async (user1, user2) => {
       AND m2.user_id = ?
     LIMIT 1
   `;
-    const [rows] = await db.execute(query, [user1, user2]);
-    return rows[0] || null;
+  const [rows] = await db.execute(query, [user1, user2]);
+  return rows[0] || null;
 };
 
 /// Lấy danh sách
@@ -77,7 +77,10 @@ const getConversations = async (account_id) => {
     p.name AS receiver_name,
     p.avatar AS receiver_avatar,
     m.content AS last_message,
-    m.created_at AS last_message_at
+    m.created_at AS last_message_at,
+    (SELECT COUNT(*) FROM messages msg 
+     WHERE msg.conversation_id = c.id 
+     AND msg.created_at > cm1.last_read_at) AS unread_count
 FROM conversation_member cm1
 JOIN conversation c 
      ON c.id = cm1.conversation_id
@@ -110,7 +113,8 @@ ORDER BY m.created_at DESC;
       title: row.type === 'private' ? row.receiver_name : row.conversation_title,
       avatar: row.receiver_avatar,
       last_message: row.last_message,
-      last_message_at: row.last_message_at
+      last_message_at: row.last_message_at,
+      unread_count: row.unread_count || 0
     }));
   } catch (error) {
     console.error('❌ getConversations error:', error.message);
@@ -118,12 +122,24 @@ ORDER BY m.created_at DESC;
   }
 };
 
+const markAsRead = async (userId, conversationId) => {
+  const db = await getConnection();
+  const [result] = await db.execute(
+    `UPDATE conversation_member 
+         SET last_read_at = NOW() 
+         WHERE user_id = ? AND conversation_id = ?`,
+    [userId, conversationId]
+  );
+  return result.affectedRows > 0;
+};
+
 
 
 module.exports = {
-    createConversation,
-    addMembers,
-    findPrivateConversation,
-    getConversations
+  createConversation,
+  addMembers,
+  findPrivateConversation,
+  getConversations,
+  markAsRead
 };
 
