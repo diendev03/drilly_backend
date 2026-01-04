@@ -3,6 +3,8 @@ const path = require('path');
 const app = require('./app');
 require('dotenv').config();
 const sockets = require('./sockets');
+const recurringJob = require('./jobs/recurring.job');
+recurringJob.start();
 
 
 const PORT = process.env.PORT || 3000;

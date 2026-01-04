@@ -22,9 +22,9 @@ const getAllCategories = async ({ account_id }) => {
   }
 };
 
-const getCategoriesByOwner = async ({account_id}) => {
+const getCategoriesByOwner = async ({ account_id }) => {
   try {
-    const rows = await transactionCategoryRepository.getCategoriesByOwner({account_id});
+    const rows = await transactionCategoryRepository.getCategoriesByOwner({ account_id });
     const result = rows.map(item => ({
       id: item.id,
       name: item.name,
@@ -69,6 +69,17 @@ const createCategory = async ({
       approved_by
     });
 
+    // Check for duplicate category
+    const existingCategory = await transactionCategoryRepository.findCategoryByNameAndOwner(name, owner_id, is_global);
+    if (existingCategory) {
+      // If exists, return it instead of creating a new one (idempotent behavior)
+      // Or throw error: throw new Error('Category already exists');
+      // For user friendliness in this context, returning the existing one is often better to avoid errors in UI 
+      // if they double clicked or something.
+      console.log("Category already exists, returning existing one:", existingCategory.id);
+      return existingCategory;
+    }
+
     return await transactionCategoryRepository.createCategory({
       name,
       type,
@@ -84,7 +95,7 @@ const createCategory = async ({
   }
 };
 
-const searchCategory = async({keyword}) => {
+const searchCategory = async ({ keyword }) => {
   try {
     const rows = await transactionCategoryRepository.searchCategory(keyword);
     const result = rows.map(item => ({

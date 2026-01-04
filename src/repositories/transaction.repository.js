@@ -7,15 +7,15 @@ const getConnection = async () => {
 };
 
 // Tạo giao dịch mới
-const createTransaction = async ({ account_id, wallet_id, type, category, amount, note, date, images }) => {
+const createTransaction = async ({ account_id, wallet_id, type, category, amount, note, date, images, created_from }) => {
   const conn = await getConnection();
 
   // Insert transaction with wallet_id
   const imagesJson = images ? JSON.stringify(images) : null;
   const [result] = await conn.query(
-    `INSERT INTO transaction (account_id, wallet_id, type, category, amount, note, date, images, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-    [account_id, wallet_id, type, category, amount, note, date, imagesJson]
+    `INSERT INTO transaction (account_id, wallet_id, type, category, amount, note, date, images, created_from, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+    [account_id, wallet_id, type, category, amount, note, date, imagesJson, created_from || 'MANUAL']
   );
 
   // Update wallet balance
@@ -47,34 +47,35 @@ const getTransactionsByFilter = async ({
   const conn = await getConnection();
 
   let query = `
-    SELECT id, account_id, wallet_id, type, category, amount, note, date, images 
-    FROM transaction 
+    SELECT t.id, t.account_id, t.wallet_id, t.type, t.category, t.amount, t.note, t.date, t.images, t.created_from, rt.frequency as recurrence_frequency
+    FROM transaction t
+    LEFT JOIN recurring_transactions rt ON t.source_recurring_id = rt.id
     WHERE 1=1
   `;
   const params = [];
 
   if (account_id) {
-    query += ` AND account_id = ?`;
+    query += ` AND t.account_id = ?`;
     params.push(account_id);
   }
 
   if (start_date) {
-    query += ` AND date >= ?`;
+    query += ` AND t.date >= ?`;
     params.push(start_date);
   }
 
   if (end_date) {
-    query += ` AND date <= ?`;
+    query += ` AND t.date <= ?`;
     params.push(end_date);
   }
 
   if (type) {
-    query += ` AND type = ?`;
+    query += ` AND t.type = ?`;
     params.push(type);
   }
 
   if (id) {
-    query += ` AND id = ?`;
+    query += ` AND t.id = ?`;
     params.push(id);
   }
 
@@ -83,12 +84,12 @@ const getTransactionsByFilter = async ({
     const categoryList = categories.split(',').map(Number).filter(id => !isNaN(id));
     if (categoryList.length > 0) {
       const placeholders = categoryList.map(() => '?').join(', ');
-      query += ` AND category IN (${placeholders})`;
+      query += ` AND t.category IN (${placeholders})`;
       params.push(...categoryList);
     }
   }
 
-  query += ` ORDER BY date DESC, created_at DESC`;
+  query += ` ORDER BY t.date DESC, t.created_at DESC`;
 
   if (typeof limit !== 'undefined' && typeof offset !== 'undefined') {
     query += ` LIMIT ? OFFSET ?`;
@@ -251,6 +252,96 @@ const getTotalAmountByPeriod = async ({ account_id, type, mode }) => {
   return rows[0]?.total ?? 0;
 };
 
+// --- RECURRING TRANSACTIONS METHODS ---
+
+// Create a new recurring transaction configuration
+const createRecurringTransaction = async ({ account_id, wallet_id, type, category, amount, note, frequency, start_date, start_day, next_run_date }) => {
+  const conn = await getConnection();
+  const [result] = await conn.query(
+    `INSERT INTO recurring_transactions 
+    (account_id, wallet_id, type, category, amount, note, frequency, start_date, start_day, next_run_date)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [account_id, wallet_id, type, category, amount, note, frequency, start_date, start_day, next_run_date]
+  );
+  return result.insertId;
+};
+
+// Get all active recurring transactions that represent due payments
+const getDueRecurringTransactions = async () => {
+  const conn = await getConnection();
+  // Select ACTIVE items where next_run_date is today or in the past
+  // Using UTC date for comparison to be safe, or database engine's CURDATE()
+  const [rows] = await conn.query(
+    `SELECT * FROM recurring_transactions 
+         WHERE status = 'ACTIVE' 
+         AND next_run_date <= CURDATE()`
+  );
+  return rows;
+};
+
+// Update next_run_date
+const updateNextRunDate = async (id, nextRunDate) => {
+  const conn = await getConnection();
+  await conn.query(
+    `UPDATE recurring_transactions SET next_run_date = ? WHERE id = ?`,
+    [nextRunDate, id]
+  );
+};
+
+// Manually insert a transaction derived from a recurring template
+// NOTE: This includes setting source_recurring_id, run_date, and created_from
+const createTransactionFromRecurring = async ({ account_id, wallet_id, type, category, amount, note, source_recurring_id, run_date }) => {
+  const conn = await getConnection();
+
+  // Try insert. If duplicate (source_recurring_id + run_date), it will throw error due to UNIQUE index.
+  // We let the caller handle the error (or ignore it).
+  const [result] = await conn.query(
+    `INSERT INTO transaction (account_id, wallet_id, type, category, amount, note, date, created_from, source_recurring_id, run_date, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'RECURRING', ?, ?, NOW())`,
+    [account_id, wallet_id, type, category, amount, note, run_date, source_recurring_id, run_date]
+  );
+
+  // Update wallet balance
+  if (wallet_id) {
+    const wallet = await walletRepository.getWalletById(wallet_id);
+    if (wallet) {
+      const currentBalance = Number(wallet.balance ?? 0);
+      const amountNum = Number(amount);
+      const newBalance = type === 'income' ? currentBalance + amountNum : currentBalance - amountNum;
+      await walletRepository.updateWalletBalance(account_id, wallet_id, newBalance);
+    }
+  }
+
+  return result.insertId;
+};
+
+// Link an existing transaction to a recurring configuration
+const linkTransactionToRecurring = async ({ id, account_id, source_recurring_id, run_date }) => {
+  const conn = await getConnection();
+  await conn.query(
+    `UPDATE transaction SET source_recurring_id = ?, created_from = 'RECURRING', run_date = ? WHERE id = ? AND account_id = ?`,
+    [source_recurring_id, run_date, id, account_id]
+  );
+};
+
+// Update recurring frequency
+const updateRecurringTransactionFrequency = async (id, frequency) => {
+  const conn = await getConnection();
+  await conn.query(
+    `UPDATE recurring_transactions SET frequency = ? WHERE id = ?`,
+    [frequency, id]
+  );
+};
+
+// Update recurring status (e.g. to INACTIVE)
+const updateRecurringTransactionStatus = async (id, status) => {
+  const conn = await getConnection();
+  await conn.query(
+    `UPDATE recurring_transactions SET status = ? WHERE id = ?`,
+    [status, id]
+  );
+};
+
 module.exports = {
   createTransaction,
   getTransactionsByFilter,
@@ -259,5 +350,12 @@ module.exports = {
   getTransactionSummaryByAccount,
   updateTransaction,
   deleteTransaction,
-  getTotalAmountByPeriod
+  getTotalAmountByPeriod,
+  createRecurringTransaction,
+  getDueRecurringTransactions,
+  updateNextRunDate,
+  createTransactionFromRecurring,
+  linkTransactionToRecurring,
+  updateRecurringTransactionFrequency,
+  updateRecurringTransactionStatus
 };

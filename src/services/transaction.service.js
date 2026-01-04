@@ -1,10 +1,10 @@
 const transactionRepo = require('../repositories/transaction.repository');
 const walletReposotory = require('../repositories/wallet.repository');
 
-const createTransaction = async ({ account_id, wallet_id, type, category, amount, note, date, images }) => {
+const createTransaction = async ({ account_id, wallet_id, type, category, amount, note, date, images, created_from }) => {
     try {
         // Repository now handles wallet balance update internally
-        const transaction = await transactionRepo.createTransaction({ account_id, wallet_id, type, category, amount, note, date, images });
+        const transaction = await transactionRepo.createTransaction({ account_id, wallet_id, type, category, amount, note, date, images, created_from });
         return transaction;
     } catch (error) {
         console.error('transaction.service.createTransaction error:', error);
@@ -65,7 +65,7 @@ const getTransactionsMonthlyChart = async ({
 
 const getTransactionById = async ({ account_id, id }) => {
     try {
-        const transactions = await transactionRepo.getTransactionsByAccount({ account_id: account_id, id: id });
+        const transactions = await transactionRepo.getTransactionsByFilter({ account_id: account_id, id: id });
         const result = transactions.map(item => ({
             id: item.id,
             account_id: item.account_id,
@@ -75,7 +75,9 @@ const getTransactionById = async ({ account_id, id }) => {
             note: item.note,
             date: item.date,
             images: item.images,
-            created_at: item.created_at
+            created_at: item.created_at,
+            created_from: item.created_from,
+            recurrence_frequency: item.recurrence_frequency
         }));
         return result[0];
     } catch (error) {
@@ -94,7 +96,7 @@ const getTransactionSummaryByAccount = async ({ account_id, start_date, end_date
     }
 };
 
-const updateTransaction = async ({ id, account_id, amount, note, type, images }) => {
+const updateTransaction = async ({ id, account_id, amount, note, type, images, recurrence }) => {
     try {
         const oldTransaction = await transactionRepo.getTransactionById({ account_id, id });
         if (!oldTransaction) throw new Error("Transaction not found");
@@ -109,6 +111,52 @@ const updateTransaction = async ({ id, account_id, amount, note, type, images })
             newAmount: Number(amount),
             newType: type,
         });
+
+        // 7. Handle Recurrence Update
+        if (recurrence && recurrence.frequency) {
+            if (recurrence.frequency === 'NONE') {
+                // Stop recurring if linked
+                if (oldTransaction.source_recurring_id) {
+                    await transactionRepo.updateRecurringTransactionStatus(oldTransaction.source_recurring_id, 'INACTIVE');
+                }
+            } else {
+                // Update frequency
+                if (oldTransaction.source_recurring_id) {
+                    await transactionRepo.updateRecurringTransactionFrequency(oldTransaction.source_recurring_id, recurrence.frequency);
+                } else {
+                    // Was MNAUAL, now RECURRING. Create new config.
+                    const startDate = new Date(oldTransaction.date);
+                    const startDay = startDate.getDate();
+                    let nextRunDate = new Date(startDate);
+
+                    if (recurrence.frequency === 'DAILY') nextRunDate.setDate(nextRunDate.getDate() + 1);
+                    else if (recurrence.frequency === 'WEEKLY') nextRunDate.setDate(nextRunDate.getDate() + 7);
+                    else if (recurrence.frequency === 'MONTHLY') nextRunDate.setMonth(nextRunDate.getMonth() + 1);
+
+                    const formatDate = (d) => d.toISOString().split('T')[0];
+
+                    const recurringId = await transactionRepo.createRecurringTransaction({
+                        account_id,
+                        wallet_id: oldTransaction.wallet_id,
+                        type: type || oldTransaction.type,
+                        category: oldTransaction.category,
+                        amount: amount || oldTransaction.amount,
+                        note: note || oldTransaction.note,
+                        frequency: recurrence.frequency,
+                        start_date: formatDate(startDate),
+                        start_day: startDay,
+                        next_run_date: formatDate(nextRunDate)
+                    });
+
+                    await linkTransactionToRecurring({
+                        id: id,
+                        account_id,
+                        source_recurring_id: recurringId,
+                        run_date: formatDate(startDate)
+                    });
+                }
+            }
+        }
 
         return updated;
     } catch (error) {
@@ -214,6 +262,17 @@ const recalculateWalletAfterTransactionChange = async ({
 
 
 
+const linkTransactionToRecurring = async (params) => {
+    try {
+        await transactionRepo.linkTransactionToRecurring(params);
+    } catch (error) {
+        console.error('transaction.service.linkTransactionToRecurring error:', error);
+        // Don't throw, just log. Or throw if critical? 
+        // Throwing because controller handles it.
+        throw error;
+    }
+};
+
 module.exports = {
     createTransaction,
     getTransactionsByFilter,
@@ -223,4 +282,6 @@ module.exports = {
     updateTransaction,
     deleteTransaction,
     getTransactionSummaryBalance,
+    createRecurringTransaction: transactionRepo.createRecurringTransaction,
+    linkTransactionToRecurring
 };

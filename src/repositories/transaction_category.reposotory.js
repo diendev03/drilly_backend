@@ -40,7 +40,7 @@ const createCategory = async ({
 // ✅ Lấy tất cả danh mục
 const getAllCategories = async ({ account_id }) => {
   const db = await getConnection();
-  const [rows] = await db.execute('SELECT * FROM transaction_category WHERE is_global=0 OR owner_id = ? ORDER BY name ASC',[account_id]);
+  const [rows] = await db.execute('SELECT * FROM transaction_category WHERE is_global=0 OR owner_id = ? ORDER BY name ASC', [account_id]);
   return rows;
 };
 
@@ -98,13 +98,36 @@ const updateCategory = async (id, updateData) => {
 const deleteCategory = async (id) => {
   const db = await getConnection();
   const [result] = await db.execute('DELETE FROM transaction_category WHERE id = ?', [id]);
-  return result.affectedRows>0;
+  return result.affectedRows > 0;
 };
 
 // Lấy category theo ID
 const getCategoryById = async (id) => {
   const db = await getConnection();
   const [rows] = await db.execute('SELECT * FROM transaction_category WHERE id = ? LIMIT 1', [id]);
+  return rows.length ? rows[0] : null;
+};
+
+// ✅ Tìm category theo tên và owner (để check trùng)
+const findCategoryByNameAndOwner = async (name, ownerId, isGlobal) => {
+  const db = await getConnection();
+  const query = `
+    SELECT * FROM transaction_category 
+    WHERE name = ? 
+    AND (
+      (owner_id = ? AND is_global = ?) 
+      OR (is_global = 1 AND ? = 1)
+    )
+    LIMIT 1
+  `;
+  // Logic simplified: just check exact match on name + (owner or global)
+  // Actually, we usually want to prevent creating a personal category if it conflicts with an existing personal one.
+  // Or prevents creating a global one if it exists.
+
+  const [rows] = await db.execute(
+    'SELECT * FROM transaction_category WHERE name = ? AND owner_id = ? AND is_global = ? LIMIT 1',
+    [name, ownerId, isGlobal]
+  );
   return rows.length ? rows[0] : null;
 };
 
@@ -116,4 +139,5 @@ module.exports = {
   updateCategory,
   deleteCategory,
   getCategoryById,
+  findCategoryByNameAndOwner,
 };

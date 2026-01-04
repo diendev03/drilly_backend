@@ -15,7 +15,7 @@ const createTransaction = async (req, res) => {
         if (!req.body || !req.body.type || !req.body.category || !req.body.amount || !req.body.date) {
             return sendFail(res, 400, 'Missing required fields');
         }
-        const { type, category, amount, note, date, images, wallet_id } = req.body;
+        const { type, category, amount, note, date, images, wallet_id, recurrence } = req.body;
 
         if (images && (!Array.isArray(images) || images.length > 2)) {
             return sendFail(res, 400, 'Images must be an array with maximum 2 items');
@@ -41,7 +41,92 @@ const createTransaction = async (req, res) => {
         }
         if (!wallet || !wallet.id) return sendFail(res, 404, 'Wallet not found for account');
 
-        const transaction = await transactionService.createTransaction({ account_id, wallet_id: wallet.id, type, category, amount, note, date, images });
+        // 1. Create the initial Manual Transaction
+        // NOTE: Even if recurring, we create the first one immediately as 'MANUAL' (or 'RECURRING' if we want to trace it? User said "Always create first transaction").
+        // Usually, the immediate one is "MANUAL" action by user. The *future* ones are "RECURRING".
+        const transaction = await transactionService.createTransaction({
+            account_id,
+            wallet_id: wallet.id,
+            type,
+            category,
+            amount,
+            note,
+            date,
+            images,
+            created_from: (recurrence && recurrence.frequency && recurrence.frequency !== 'NONE') ? 'RECURRING' : 'MANUAL'
+        });
+
+        // 2. Setup Recurring Configuration if requested
+        if (recurrence && recurrence.frequency && recurrence.frequency !== 'NONE') {
+            const startDate = new Date(date); // Use the manually picked date as start
+            const startDay = startDate.getDate();
+            let nextRunDate = new Date(startDate);
+
+            // Calculate first *future* run date
+            if (recurrence.frequency === 'DAILY') {
+                nextRunDate.setDate(nextRunDate.getDate() + 1);
+            } else if (recurrence.frequency === 'WEEKLY') {
+                nextRunDate.setDate(nextRunDate.getDate() + 7);
+            } else if (recurrence.frequency === 'MONTHLY') {
+                // Determine next month's run date (handling edge cases like Jan 31 -> Feb 28)
+                // Logic: Move to 1st of next month, then set date to Math.min(startDay, daysInMonth)
+
+                // Jump to next month
+                nextRunDate.setMonth(nextRunDate.getMonth() + 1);
+
+                // Checking valid days in that month
+                // e.g. if startDate was Jan 31. nextRunDate becomes March 3 (if simple add month) or Feb 28?
+                // JS: new Date('2024-01-31').setMonth(1) -> '2024-03-02' (Feb has 29). It overflows.
+                // WE WANT: Closest valid day.
+
+                // Better approach for Month add:
+                // 1. Get current month index.
+                // 2. Set month + 1.
+                // 3. Check if date changed (overflowed). If so, set to last day of prev month (which is the target month).
+
+                const targetMonth = (startDate.getMonth() + 1) % 12;
+                const tempDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, startDay);
+
+                if (tempDate.getMonth() !== targetMonth) {
+                    // Overflow occurred (e.g. Feb 30 -> Mar 2).
+                    // Set to 0th day of current tempDate month (which gives last day of previous/target month)
+                    tempDate.setDate(0);
+                }
+                nextRunDate = tempDate;
+            }
+
+            // Format date YYYY-MM-DD for MySQL
+            const formatDate = (d) => d.toISOString().split('T')[0];
+
+            const recurringId = await transactionService.createRecurringTransaction({
+                account_id,
+                wallet_id: wallet.id,
+                type,
+                category,
+                amount,
+                note,
+                frequency: recurrence.frequency,
+                start_date: formatDate(startDate),
+                start_day: startDay,
+                next_run_date: formatDate(nextRunDate)
+            });
+
+            // Link the initial transaction to the recurring config so UI shows correct frequency
+            try {
+                await transactionService.linkTransactionToRecurring({
+                    id: transaction.id,
+                    account_id,
+                    source_recurring_id: recurringId,
+                    run_date: formatDate(startDate)
+                });
+            } catch (linkError) {
+                console.error("Failed to link transaction to recurring config:", linkError);
+                // Non-fatal error for the transaction creation itself
+            }
+
+            // Should we return the recurring info? Maybe not critical for now.
+        }
+
         // Trigger push notification but don't let Pusher errors fail the request
         try {
             pusher.trigger('transactions-channel', 'new-transaction', transaction);
@@ -179,7 +264,7 @@ const updateTransaction = async (req, res) => {
         if (!id) {
             return sendFail(res, 400, 'Transaction ID is required');
         }
-        const { amount, note, type, images } = req.body;
+        const { amount, note, type, images, recurrence } = req.body;
         if (images && (!Array.isArray(images) || images.length > 2)) {
             return sendFail(res, 400, 'Images must be an array with maximum 2 items');
         }
@@ -189,7 +274,7 @@ const updateTransaction = async (req, res) => {
         if (!type) {
             return sendFail(res, 400, 'Type is required');
         }
-        const updatedTransaction = await transactionService.updateTransaction({ id, account_id, amount, note, type, images });
+        const updatedTransaction = await transactionService.updateTransaction({ id, account_id, amount, note, type, images, recurrence });
         if (!updatedTransaction) {
             return sendFail(res, 404, 'Transaction not found');
         }
