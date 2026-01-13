@@ -31,23 +31,41 @@ const addMembers = async (conversationId, userIds, role = "member") => {
     userIds
   );
 
-  if (profiles.length === 0) return [];
+  console.log(`🔍 addMembers: Found ${profiles.length} profiles for userIds: ${userIds.join(',')}`);
 
-  // 2️⃣ Build danh sách giá trị cho INSERT
+  if (profiles.length === 0) {
+    console.log(`⚠️ addMembers: No profiles found, skipping insert`);
+    return [];
+  }
+
+  // 2️⃣ Build danh sách giá trị cho INSERT (include last_read_at)
   const values = profiles.map(
-    (u) => `(${conversationId}, ${u.account_id}, ${db.escape(u.name)}, ${db.escape(role)}, NOW())`
+    (u) => `(${conversationId}, ${u.account_id}, ${db.escape(u.name)}, ${db.escape(role)}, NOW(), NOW())`
   ).join(',');
 
   // 3️⃣ Insert nhiều dòng cùng lúc
   const [result] = await db.query(`
-    INSERT INTO conversation_member (conversation_id, user_id, name, role, join_at)
+    INSERT INTO conversation_member (conversation_id, user_id, name, role, join_at, last_read_at)
     VALUES ${values};
   `);
+
+  console.log(`✅ addMembers: Inserted ${profiles.length} members into conversation ${conversationId}`);
 
   return {
     insertedCount: profiles.length,
     conversation_id: conversationId,
   };
+};
+
+// ✅ Thêm một thành viên
+const addMember = async (conversationId, userId, role = "member", name = null) => {
+  const db = await getConnection();
+  await db.execute(
+    `INSERT INTO conversation_member (conversation_id, user_id, name, role, join_at, last_read_at)
+     VALUES (?, ?, ?, ?, NOW(), NOW())`,
+    [conversationId, userId, name, role]
+  );
+  return { conversation_id: conversationId, user_id: userId, role };
 };
 
 const findPrivateConversation = async (user1, user2) => {
@@ -62,7 +80,9 @@ const findPrivateConversation = async (user1, user2) => {
       AND m2.user_id = ?
     LIMIT 1
   `;
+  console.log(`🔍 findPrivateConversation: user1=${user1}, user2=${user2}`);
   const [rows] = await db.execute(query, [user1, user2]);
+  console.log(`📋 findPrivateConversation result: ${rows.length > 0 ? `Found conv ${rows[0].id}` : 'Not found'}`);
   return rows[0] || null;
 };
 
@@ -105,7 +125,9 @@ ORDER BY m.created_at DESC;
 
   try {
     const db = await getConnection();
+    console.log(`🔍 getConversations for account_id: ${account_id}`);
     const [rows] = await db.execute(query, [account_id]);
+    console.log(`📋 Found ${rows.length} conversations`);
 
     return rows.map(row => ({
       conversation_id: row.conversation_id,
@@ -137,6 +159,7 @@ const markAsRead = async (userId, conversationId) => {
 
 module.exports = {
   createConversation,
+  addMember,
   addMembers,
   findPrivateConversation,
   getConversations,

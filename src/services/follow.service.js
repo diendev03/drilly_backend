@@ -1,120 +1,113 @@
-const followRepository = require('../repositories/follow.repository');
+const followRepo = require("../repositories/follow.repository");
+const profileRepo = require("../repositories/profile.repository"); // To get names/avatars for notifications
 
 /**
- * Follow a user and send notification
+ * Follow a user
  */
 const followUser = async (followerId, followingId) => {
-    // Check if blocked
-    const blocked = await followRepository.isBlocked(followerId, followingId);
-    if (blocked) {
-        throw new Error('Cannot follow this user');
+    // 1. Check if blocked
+    const isBlocked = await followRepo.isBlocked(followingId, followerId);
+    // If target blocked me, I cannot follow? Or if I blocked target?
+    // Usually if I blocked target, I should unblock first? Or just fail?
+    // If target blocked me, I strictly cannot follow.
+    if (isBlocked) {
+        throw new Error("Cannot follow this user (blocked)");
     }
 
-    const success = await followRepository.followUser(followerId, followingId);
+    // 2. Perform follow
+    const success = await followRepo.followUser(followerId, followingId);
+    if (!success) return false; // Maybe already following
 
-    if (success) {
-        // Create notification for the followed user
-        await followRepository.createNotification({
-            userId: followingId,
-            type: 'follow',
-            title: 'New Follower',
-            body: 'Someone started following you',
-            data: { followerId }
-        });
+    // 3. Create Notification
+    try {
+        const followerProfile = await profileRepo.getProfile(followerId);
+        if (followerProfile) {
+            await followRepo.createNotification({
+                userId: followingId,
+                type: 'new_follower',
+                title: 'New Follower',
+                body: `${followerProfile.name} started following you.`,
+                data: {
+                    followerId,
+                    followerName: followerProfile.name,
+                    followerAvatar: followerProfile.avatar
+                }
+            });
+        }
+    } catch (e) {
+        console.error("Failed to create notification on follow:", e);
+        // Don't fail the request just because notification failed
     }
 
-    return success;
+    return true;
 };
 
 /**
  * Unfollow a user
  */
 const unfollowUser = async (followerId, followingId) => {
-    return await followRepository.unfollowUser(followerId, followingId);
+    return await followRepo.unfollowUser(followerId, followingId);
 };
 
 /**
- * Get followers list
+ * Get followers
  */
 const getFollowers = async (userId, limit, offset) => {
-    return await followRepository.getFollowers(userId, limit, offset);
+    return await followRepo.getFollowers(userId, limit, offset);
 };
 
 /**
- * Get following list
+ * Get following
  */
 const getFollowing = async (userId, limit, offset) => {
-    return await followRepository.getFollowing(userId, limit, offset);
+    return await followRepo.getFollowing(userId, limit, offset);
 };
 
 /**
- * Check mutual follow
- */
-const checkMutualFollow = async (user1, user2) => {
-    return await followRepository.checkMutualFollow(user1, user2);
-};
-
-/**
- * Get follow status
+ * Get follow status and counts
  */
 const getFollowStatus = async (currentUser, targetUser) => {
-    return await followRepository.getFollowStatus(currentUser, targetUser);
+    return await followRepo.getFollowStatus(currentUser, targetUser);
 };
 
-/**
- * Get follow counts
- */
 const getFollowCounts = async (userId) => {
-    return await followRepository.getFollowCounts(userId);
+    return await followRepo.getFollowCounts(userId);
 };
 
 /**
  * Block user
  */
 const blockUser = async (blockerId, blockedId) => {
-    return await followRepository.blockUser(blockerId, blockedId);
+    return await followRepo.blockUser(blockerId, blockedId);
 };
 
 /**
  * Unblock user
  */
 const unblockUser = async (blockerId, blockedId) => {
-    return await followRepository.unblockUser(blockerId, blockedId);
+    return await followRepo.unblockUser(blockerId, blockedId);
 };
 
 /**
  * Get blocked users
  */
 const getBlockedUsers = async (userId) => {
-    return await followRepository.getBlockedUsers(userId);
+    return await followRepo.getBlockedUsers(userId);
 };
 
 /**
- * Check if blocked
- */
-const isBlocked = async (user1, user2) => {
-    return await followRepository.isBlocked(user1, user2);
-};
-
-/**
- * Get notifications
+ * Notifications
  */
 const getNotifications = async (userId, limit, offset) => {
-    return await followRepository.getNotifications(userId, limit, offset);
+    return await followRepo.getNotifications(userId, limit, offset);
 };
 
-/**
- * Mark notification as read
- */
-const markNotificationRead = async (notificationId, userId) => {
-    return await followRepository.markNotificationRead(notificationId, userId);
-};
-
-/**
- * Get unread count
- */
 const getUnreadCount = async (userId) => {
-    return await followRepository.getUnreadCount(userId);
+    return await followRepo.getUnreadCount(userId);
+};
+
+const markNotificationRead = async (notificationId, userId) => {
+    return await followRepo.markNotificationRead(notificationId, userId);
 };
 
 module.exports = {
@@ -122,14 +115,12 @@ module.exports = {
     unfollowUser,
     getFollowers,
     getFollowing,
-    checkMutualFollow,
     getFollowStatus,
     getFollowCounts,
     blockUser,
     unblockUser,
     getBlockedUsers,
-    isBlocked,
     getNotifications,
-    markNotificationRead,
-    getUnreadCount
+    getUnreadCount,
+    markNotificationRead
 };

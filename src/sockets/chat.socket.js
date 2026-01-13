@@ -32,6 +32,15 @@ module.exports = (io, socket) => {
     console.log(`👥 User ${userId} joined room conv:${conversationId}`);
   });
 
+  // ✅ Manual join user room (fallback if auto-join failed)
+  socket.on('join_user_room', (requestedUserId) => {
+    const targetUserId = requestedUserId || userId;
+    if (targetUserId) {
+      SocketManager.joinDefaultRooms(socket, targetUserId);
+      console.log(`📌 Manual join: User ${targetUserId} joined default rooms`);
+    }
+  });
+
   const profileRepo = require("../repositories/profile.repository");
   //...
 

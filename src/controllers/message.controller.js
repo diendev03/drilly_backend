@@ -1,5 +1,5 @@
 const messageService = require("../services/message.service");
-const followService = require("../services/follow.service");
+
 const socketEvent = require("../sockets/socket.events");
 const { sendSuccess, sendFail, sendError } = require("../utils/response");
 const { SocketManager, ROOM } = require("../sockets/socket.manager");
@@ -47,14 +47,31 @@ const sendMessage = async (req, res) => {
       timestamp: message.created_at
     };
 
-    // ✅ Phát sự kiện socket cho toàn bộ thành viên trong phòng
+    // ✅ Phát sự kiện socket cho toàn bộ thành viên trong phòng chat
+    console.log(`📡 Emitting RECEIVE_MESSAGE to conv:${finalConvId}`, socketMessage);
     SocketManager.emitToConversation(
       finalConvId,
       socketEvent.RECEIVE_MESSAGE,
       socketMessage
     );
 
-    // ✅ Cập nhật last message
+    // ✅ Also emit to user rooms IF user is NOT in conv room (smart emit to avoid duplicates)
+    await SocketManager.emitToConversationOrUser(
+      finalConvId,
+      senderId,
+      socketEvent.RECEIVE_MESSAGE,
+      socketMessage
+    );
+    if (receiver_id) {
+      await SocketManager.emitToConversationOrUser(
+        finalConvId,
+        receiver_id,
+        socketEvent.RECEIVE_MESSAGE,
+        socketMessage
+      );
+    }
+
+    // ✅ Cập nhật last message (always to user rooms for conversation list)
     const updatePayload = { conversationId: finalConvId, message: socketMessage };
     SocketManager.emitToUser(
       senderId,

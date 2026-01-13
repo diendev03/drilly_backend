@@ -77,10 +77,11 @@ const getTotalBalanceByAccountId = async (account_id) => {
 
 const updateWalletBalance = async (account_id, wallet_id, new_balance) => {
     const conn = await getConnection();
-    await conn.query(
+    const [result] = await conn.query(
         'UPDATE wallet SET balance = ? WHERE id = ? AND account_id = ?',
         [new_balance, wallet_id, account_id]
     );
+    console.log(`💰 UPDATE wallet #${wallet_id} balance = ${new_balance}, affected: ${result.affectedRows}`);
 };
 
 module.exports = {

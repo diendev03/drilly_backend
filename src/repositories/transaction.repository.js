@@ -25,6 +25,11 @@ const createTransaction = async ({ account_id, wallet_id, type, category, amount
       const currentBalance = Number(wallet.balance ?? 0);
       const amountNum = Number(amount);
       const newBalance = type === 'income' ? currentBalance + amountNum : currentBalance - amountNum;
+
+      console.log(`➕ CREATE Transaction:`);
+      console.log(`   Type: ${type}, Amount: ${amountNum}`);
+      console.log(`   Wallet #${wallet_id}: ${currentBalance} → ${newBalance}`);
+
       await walletRepository.updateWalletBalance(account_id, wallet_id, newBalance);
     }
   }
@@ -167,8 +172,11 @@ const updateTransaction = async ({ id, account_id, amount, note, type, images })
   const oldAmount = Number(oldTransaction.amount);
   const oldType = oldTransaction.type;
 
-  // 2. Lấy ví hiện tại
-  const wallet = await walletRepository.getWalletByAccountId({ account_id });
+  // 2. Lấy ví của giao dịch (dùng wallet_id từ giao dịch cũ, không phải ví đầu tiên)
+  const walletId = oldTransaction.wallet_id;
+  if (!walletId) throw new Error("Transaction has no wallet_id");
+
+  const wallet = await walletRepository.getWalletById(walletId);
   if (!wallet || !wallet.id) throw new Error("Wallet not found");
 
   const currentBalance = Number(wallet.balance ?? 0);
@@ -197,8 +205,8 @@ const updateTransaction = async ({ id, account_id, amount, note, type, images })
     [newAmount, note, type, imagesJson, id, account_id]
   );
 
-  // 6. Cập nhật ví
-  await walletRepository.updateWalletBalance(account_id, wallet.id, newBalance);
+  // 6. Cập nhật ví (dùng walletId từ giao dịch)
+  await walletRepository.updateWalletBalance(account_id, walletId, newBalance);
 
   return await getTransactionById({ account_id, id });
 };
@@ -213,18 +221,27 @@ const deleteTransaction = async ({ id, account_id }) => {
   const amountNum = Number(oldTransaction.amount);
   const type = oldTransaction.type;
 
-  const wallet = await walletRepository.getWalletByAccountId({ account_id });
+  // Lấy ví của giao dịch (dùng wallet_id từ giao dịch, không phải ví đầu tiên)
+  const walletId = oldTransaction.wallet_id;
+  if (!walletId) throw new Error("Transaction has no wallet_id");
+
+  const wallet = await walletRepository.getWalletById(walletId);
   if (!wallet || !wallet.id) throw new Error("Wallet not found");
 
   const currentBalance = Number(wallet.balance ?? 0);
+  // Xóa income => trừ tiền, xóa expense => cộng tiền
   const newBalance = (type === "income") ? currentBalance - amountNum : currentBalance + amountNum;
+
+  console.log(`🗑️ DELETE Transaction #${id}:`);
+  console.log(`   Type: ${type}, Amount: ${amountNum}`);
+  console.log(`   Wallet #${walletId}: ${currentBalance} → ${newBalance}`);
 
   const [result] = await conn.query(
     `DELETE FROM transaction WHERE id = ? AND account_id = ?`,
     [id, account_id]
   );
 
-  await walletRepository.updateWalletBalance(account_id, wallet.id, newBalance);
+  await walletRepository.updateWalletBalance(account_id, walletId, newBalance);
 
   return result.affectedRows > 0;
 };
