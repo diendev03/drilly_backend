@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const { SocketManager } = require("./socket.manager");
 const SocketEvent = require("./socket.events");
+const callHandler = require("./call.handler");
 
 const userSockets = new Map();
 
@@ -20,6 +21,16 @@ module.exports = (io, socket) => {
         userSockets.get(userId).add(socket.id);
 
         SocketManager.joinDefaultRooms(socket, userId);
+
+        // Broadcast user online status to all users
+        SocketManager.emitToGlobal(SocketEvent.USER_ONLINE, {
+          userId,
+          timestamp: new Date().toISOString()
+        });
+        console.log(`🟢 User ${userId} is now ONLINE`);
+
+        // ✅ Initialize Call Handler
+        callHandler(io, socket, userId);
       }
     } catch {
       console.warn("⚠️ Invalid token in socket handshake");
@@ -40,6 +51,18 @@ module.exports = (io, socket) => {
       console.log(`📌 Manual join: User ${targetUserId} joined default rooms`);
     }
   });
+
+  // ✅ Check if a user is online
+  socket.on('check_user_status', (targetUserId) => {
+    const isOnline = userSockets.has(targetUserId);
+    socket.emit('user_status_response', {
+      userId: targetUserId,
+      isOnline,
+      timestamp: new Date().toISOString()
+    });
+    console.log(`🔍 Status check: User ${targetUserId} is ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
+  });
+
 
   const profileRepo = require("../repositories/profile.repository");
   //...
@@ -100,7 +123,17 @@ module.exports = (io, socket) => {
   socket.on(SocketEvent.DISCONNECT, () => {
     if (userId && userSockets.has(userId)) {
       userSockets.get(userId).delete(socket.id);
-      if (!userSockets.get(userId).size) userSockets.delete(userId);
+
+      // If user has no more active sockets, broadcast offline status
+      if (!userSockets.get(userId).size) {
+        userSockets.delete(userId);
+
+        SocketManager.emitToGlobal(SocketEvent.USER_OFFLINE, {
+          userId,
+          timestamp: new Date().toISOString()
+        });
+        console.log(`⚫ User ${userId} is now OFFLINE`);
+      }
     }
     console.log(`❌ Socket ${socket.id} disconnected from user ${userId}`);
   });
