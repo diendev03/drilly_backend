@@ -2,42 +2,34 @@ const SocketEvent = require("./socket.events");
 const { SocketManager } = require("./socket.manager");
 
 module.exports = (io, socket, userId) => {
-    // 📞 Call Request
+    // 📞 Call Request (Agora - simplified signaling)
     socket.on(SocketEvent.CALL_USER, (data) => {
         if (!userId) {
             console.warn("⚠️ Call attempt without auth");
             return;
         }
-        const { receiverId, offer } = data;
+        const { receiverId, channelName, isVideo } = data;
 
-        console.log(`📞 Call Request: ${userId} -> ${receiverId}`);
+        console.log(`📞 Call Request: ${userId} -> ${receiverId} (channel: ${channelName})`);
 
-        // Notify receiver
+        // Notify receiver with channelName (no SDP/ICE needed for Agora)
         SocketManager.emitToUser(receiverId, SocketEvent.CALL_MADE, {
-            offer,
+            channelName,
+            isVideo: isVideo ?? true,
             senderId: userId,
             socketId: socket.id
         });
     });
 
-    // 📞 Call Answer (Receiver accepts)
-    socket.on(SocketEvent.WEBRTC_ANSWER, (data) => {
-        const { to, answer } = data; // to = callerUserId
+    // 📞 Call Accepted (Receiver accepts)
+    socket.on(SocketEvent.CALL_ACCEPTED, (data) => {
+        const { to, channelName } = data; // to = callerUserId
 
-        console.log(`📞 Answer: ${userId} -> ${to}`);
-        SocketManager.emitToUser(to, SocketEvent.ANSWER_MADE, {
-            answer,
-            answererId: userId,
+        console.log(`📞 Call Accepted: ${userId} -> ${to} (channel: ${channelName})`);
+        SocketManager.emitToUser(to, SocketEvent.CALL_ACCEPTED, {
+            channelName,
+            accepterId: userId,
             socketId: socket.id
-        });
-    });
-
-    // 🧊 ICE Candidate
-    socket.on(SocketEvent.WEBRTC_ICE_CANDIDATE, (data) => {
-        const { to, candidate } = data;
-        SocketManager.emitToUser(to, SocketEvent.WEBRTC_ICE_CANDIDATE, {
-            candidate,
-            senderId: userId
         });
     });
 

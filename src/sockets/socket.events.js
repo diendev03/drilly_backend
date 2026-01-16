@@ -37,14 +37,10 @@ module.exports = Object.freeze({
   CATEGORY_UPDATED: "category_updated",
   CATEGORY_DELETED: "category_deleted",
 
-  // 📞 WebRTC Call
-  WEBRTC_OFFER: "webrtc_offer",
-  WEBRTC_ANSWER: "webrtc_answer",
-  WEBRTC_ICE_CANDIDATE: "webrtc_ice_candidate",
-  CALL_USER: "call_user", // Request call
-  CALL_MADE: "call_made", // Incoming to Receiver
-  ANSWER_MADE: "answer_made", // Answer back to Caller
-  CALL_ACCEPTED: "call_accepted",
+  // 📞 Agora Call (Simplified - No WebRTC SDP/ICE)
+  CALL_USER: "call_user",       // Request call with channelName
+  CALL_MADE: "call_made",       // Incoming to Receiver
+  CALL_ACCEPTED: "call_accepted", // Callee accepted
   CALL_REJECTED: "call_rejected",
   CALL_ENDED: "call_ended",
 });
