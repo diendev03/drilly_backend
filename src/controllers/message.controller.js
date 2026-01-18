@@ -4,6 +4,7 @@ const socketEvent = require("../sockets/socket.events");
 const { sendSuccess, sendFail, sendError } = require("../utils/response");
 const { SocketManager, ROOM } = require("../sockets/socket.manager");
 const profileRepo = require("../repositories/profile.repository");
+const messageEvent = require("../message/message.event");
 
 const sendMessage = async (req, res) => {
   try {
@@ -84,6 +85,13 @@ const sendMessage = async (req, res) => {
         socketEvent.UPDATE_LAST_MESSAGE,
         updatePayload
       );
+    }
+
+    // ✅ Push notification cho background/killed state (non-blocking)
+    if (receiver_id) {
+      messageEvent.onMessageCreated(message, [receiver_id], senderProfile).catch(err => {
+        console.error("Push notification error (non-blocking):", err.message);
+      });
     }
 
     return sendSuccess(res, "Send message successfully", message);

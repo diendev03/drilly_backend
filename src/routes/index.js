@@ -10,6 +10,7 @@ const followRoute = require('./follow.route');
 const blockRoute = require('./block.route');
 const notificationRoute = require('./notification.route');
 const callRoute = require('./call.route');
+const fcmRoute = require('./fcm.route');
 
 const initRoutes = (app) => {
   app.use('/api/v1/user', profileRoute);
@@ -24,6 +25,7 @@ const initRoutes = (app) => {
   app.use('/api/v1/block', blockRoute);
   app.use('/api/v1/notifications', notificationRoute);
   app.use('/api/v1/call', callRoute);
+  app.use('/api/v1/fcm', fcmRoute);
 };
 
 module.exports = initRoutes;
