@@ -92,11 +92,12 @@ const findProfile = async ({ keyword, user_id }) => {
       p.account_id, 
       p.name, 
       p.avatar,
-      c.id AS conversation_id,
+      p.bio,
+      MAX(c.id) AS conversation_id,
       CASE 
-        WHEN f1.id IS NOT NULL AND f2.id IS NOT NULL THEN 'mutual'
-        WHEN f1.id IS NOT NULL THEN 'following'
-        WHEN f2.id IS NOT NULL THEN 'followed'
+        WHEN MAX(f1.id) IS NOT NULL AND MAX(f2.id) IS NOT NULL THEN 'mutual'
+        WHEN MAX(f1.id) IS NOT NULL THEN 'following'
+        WHEN MAX(f2.id) IS NOT NULL THEN 'followed'
         ELSE 'none'
       END AS follow_status
     FROM profile p
@@ -114,6 +115,7 @@ const findProfile = async ({ keyword, user_id }) => {
     WHERE p.name LIKE ? 
       AND p.account_id != ?
       AND b.id IS NULL
+    GROUP BY p.account_id, p.name, p.avatar, p.bio
   `;
   try {
     const [result] = await db.execute(query, [
