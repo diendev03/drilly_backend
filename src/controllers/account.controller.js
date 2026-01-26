@@ -4,13 +4,13 @@ const { sendCreated, sendFail, sendError, sendSuccess } = require('../utils/resp
 // ✅ Tạo tài khoản
 const createUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, phone, password } = req.body;
 
-    if (!name || !email || !password) {
-      return sendFail(res, 'Thiếu thông tin bắt buộc');
+    if (!name || !email || !phone || !password) {
+      return sendFail(res, 'Thiếu thông tin bắt buộc (name, email, phone, password)');
     }
 
-    const user = await accountService.createUser({ name, email, password });
+    const user = await accountService.createUser({ name, email, phone, password });
     return sendCreated(res, 'Tạo tài khoản thành công', user);
   } catch (error) {
     if (error.message.includes('Email đã tồn tại')) {

@@ -6,14 +6,14 @@ const jwt = require('jsonwebtoken');
 const { generateTokens } = require('../utils/token');
 
 // Tạo mới tài khoản
-const createUser = async ({ name, email, password }) => {
+const createUser = async ({ name, email, phone, password }) => {
   const existing = await accountRepository.getAccountByEmail(email);
   if (existing) throw new Error('Email đã tồn tại');
 
   const hashed = await bcrypt.hash(password, 10);
-  const account = await accountRepository.createAccount({ email, password: hashed });
+  const account = await accountRepository.createAccount({ email, phone, password: hashed });
   const profile = await profileRepository.createProfile({
-    account_id: account.id, name: name, email: email
+    account_id: account.id, name: name, email: email, phone: phone
   });
   if (!profile) throw new Error('Không thể tạo profile');
   const { password: _, ...safeAccount } = account;
@@ -25,9 +25,10 @@ const findUserByEmail = async (email) => {
   return await accountRepository.getAccountByEmail(email);
 };
 
-// Đăng nhập
+// Đăng nhập (email hoặc phone)
 const login = async ({ email, password }) => {
-  const account = await findUserByEmail(email);
+  // email field can contain email OR phone
+  const account = await accountRepository.getAccountByEmailOrPhone(email);
   if (!account) throw new Error('Tài khoản không tồn tại');
 
   const ok = await bcrypt.compare(password, account.password);

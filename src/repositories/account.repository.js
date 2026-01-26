@@ -5,18 +5,18 @@ const getConnection = async () => {
 };
 
 // Tạo account mới
-const createAccount = async ({ email, password, role = 0, status = 'active' }) => {
+const createAccount = async ({ email, phone, password, role = 0, status = 'active' }) => {
   const query = `
-    INSERT INTO account (email, password, created_at, status, role)
-    VALUES (?, ?, NOW(), ?, ?)
+    INSERT INTO account (email, phone, password, created_at, status, role)
+    VALUES (?, ?, ?, NOW(), ?, ?)
   `;
   try {
     const db = await getConnection();
-    await db.execute(query, [email, password, status, role]);
+    await db.execute(query, [email, phone, password, status, role]);
     account = await getAccountByEmail(email);
     await db.execute(
-        'INSERT INTO wallet (account_id, balance, created_at) VALUES (?, 0, NOW())',
-        [account.id]
+      'INSERT INTO wallet (account_id, balance, created_at) VALUES (?, 0, NOW())',
+      [account.id]
     );
 
     return account;
@@ -35,6 +35,19 @@ const getAccountByEmail = async (email) => {
     return rows.length ? rows[0] : null;
   } catch (error) {
     console.error('❌ Lỗi findAccountByEmail:', error.message);
+    throw error;
+  }
+};
+
+// Tìm account theo email hoặc phone
+const getAccountByEmailOrPhone = async (identifier) => {
+  const query = `SELECT * FROM account WHERE email = ? OR phone = ? LIMIT 1`;
+  try {
+    const db = await getConnection();
+    const [rows] = await db.execute(query, [identifier, identifier]);
+    return rows.length ? rows[0] : null;
+  } catch (error) {
+    console.error('❌ Lỗi getAccountByEmailOrPhone:', error.message);
     throw error;
   }
 };
@@ -71,6 +84,7 @@ const changePassword = async (account_id, newPassword) => {
 module.exports = {
   createAccount,
   getAccountByEmail,
+  getAccountByEmailOrPhone,
   getAccountById,
   changePassword
 };

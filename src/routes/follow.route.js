@@ -20,6 +20,9 @@ router.get('/followers', followController.getFollowers);
 // Get following
 router.get('/following', followController.getFollowing);
 
+// Get following IDs (for caching)
+router.get('/following/ids', followController.getFollowingIds);
+
 // Get follow status
 router.get('/status/:userId', followController.getFollowStatus);
 

@@ -28,11 +28,8 @@ const getWalletByAccountId = async (req, res) => {
     }
     try {
         const wallet = await walletService.getWalletByAccountId({ account_id });
-        if (wallet) {
-            sendSuccess(res, 'Wallet found', wallet);
-        } else {
-            sendFail(res, 'Wallet not found');
-        }
+        // Return success with null if no wallet found (new user)
+        sendSuccess(res, wallet ? 'Wallet found' : 'No wallet yet', wallet);
     } catch (error) {
         sendError(res, error);
     }
@@ -45,7 +42,7 @@ const getAllWallets = async (req, res) => {
     }
     try {
         const wallets = await walletService.getAllWalletsByAccountId({ account_id });
-        sendSuccess(res, 'Wallets fetched successfully', wallets);
+        sendSuccess(res, 'Wallets fetched successfully', wallets || []);
     } catch (error) {
         sendError(res, error);
     }

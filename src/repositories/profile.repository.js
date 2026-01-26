@@ -9,6 +9,7 @@ const createProfile = async ({
   account_id,
   name = '',
   email = '',
+  phone = '',
   birthday = null,
   gender = null,
   my_color = '',
@@ -16,8 +17,8 @@ const createProfile = async ({
   location = ''
 }) => {
   const query = `
-    INSERT INTO profile (account_id, name, email, birthday, gender, my_color, avatar, location, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    INSERT INTO profile (account_id, name, email, phone, birthday, gender, my_color, avatar, location, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
   `;
   if (!my_color || my_color.trim() === '') {
     my_color = 'DBA507';
@@ -25,7 +26,7 @@ const createProfile = async ({
   try {
     const db = await getConnection();
     const [result] = await db.execute(query, [
-      account_id, name, email, birthday, gender, my_color, avatar, location
+      account_id, name, email, phone, birthday, gender, my_color, avatar, location
     ]);
 
     if (result.affectedRows === 1) {
@@ -42,8 +43,12 @@ const createProfile = async ({
 // ✅ Lấy profile theo account_id
 const getProfile = async (account_id) => {
   const query = `
-    SELECT * FROM profile
-    WHERE account_id = ?
+    SELECT 
+      p.*,
+      (SELECT COUNT(*) FROM user_follow WHERE following_id = p.account_id) AS followers_count,
+      (SELECT COUNT(*) FROM user_follow WHERE follower_id = p.account_id) AS following_count
+    FROM profile p
+    WHERE p.account_id = ?
   `;
   try {
     const db = await getConnection();
@@ -84,15 +89,20 @@ const updateProfile = async ({
   }
 };
 
-// Tìm profile (includes follow status, excludes blocked users)
+// Tìm profile by name, phone, or id (includes follow status, excludes blocked users)
 const findProfile = async ({ keyword, user_id }) => {
   const db = await getConnection();
+
+  // Check if keyword is numeric (could be account_id or phone)
+  const isNumeric = /^\d+$/.test(keyword);
+
   const query = `
     SELECT 
       p.account_id, 
       p.name, 
       p.avatar,
       p.bio,
+      a.phone,
       MAX(c.id) AS conversation_id,
       CASE 
         WHEN MAX(f1.id) IS NOT NULL AND MAX(f2.id) IS NOT NULL THEN 'mutual'
@@ -101,6 +111,7 @@ const findProfile = async ({ keyword, user_id }) => {
         ELSE 'none'
       END AS follow_status
     FROM profile p
+    JOIN account a ON a.id = p.account_id
     LEFT JOIN conversation_member cm1 ON cm1.user_id = p.account_id
     LEFT JOIN conversation c 
       ON c.id = cm1.conversation_id 
@@ -112,20 +123,31 @@ const findProfile = async ({ keyword, user_id }) => {
     LEFT JOIN user_follow f2 ON f2.follower_id = p.account_id AND f2.following_id = ?
     LEFT JOIN user_block b ON (b.blocker_id = ? AND b.blocked_id = p.account_id)
                            OR (b.blocker_id = p.account_id AND b.blocked_id = ?)
-    WHERE p.name LIKE ? 
+    WHERE (
+      p.name LIKE ? 
+      OR a.phone LIKE ?
+      OR (? = 1 AND p.account_id = ?)
+    )
       AND p.account_id != ?
       AND b.id IS NULL
-    GROUP BY p.account_id, p.name, p.avatar, p.bio
+    GROUP BY p.account_id, p.name, p.avatar, p.bio, a.phone
+    LIMIT 20
   `;
   try {
+    const searchPattern = `%${keyword}%`;
+    const accountId = isNumeric ? parseInt(keyword) : 0;
+
     const [result] = await db.execute(query, [
-      user_id,
-      user_id,
-      user_id,
-      user_id,
-      user_id,
-      `%${keyword}%`,
-      user_id
+      user_id,           // cm2.user_id
+      user_id,           // f1.follower_id
+      user_id,           // f2.following_id
+      user_id,           // b.blocker_id
+      user_id,           // b.blocked_id
+      searchPattern,     // p.name LIKE
+      searchPattern,     // a.phone LIKE
+      isNumeric ? 1 : 0, // check if searching by id
+      accountId,         // p.account_id =
+      user_id            // exclude self
     ]);
     return result;
   } catch (error) {

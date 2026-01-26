@@ -75,6 +75,13 @@ const getFollowCounts = async (userId) => {
 };
 
 /**
+ * Get following IDs only (for caching)
+ */
+const getFollowingIds = async (userId) => {
+    return await followRepo.getFollowingIds(userId);
+};
+
+/**
  * Block user
  */
 const blockUser = async (blockerId, blockedId) => {
@@ -115,6 +122,7 @@ module.exports = {
     unfollowUser,
     getFollowers,
     getFollowing,
+    getFollowingIds,
     getFollowStatus,
     getFollowCounts,
     blockUser,

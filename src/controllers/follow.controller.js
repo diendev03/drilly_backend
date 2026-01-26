@@ -25,10 +25,16 @@ const followUser = async (req, res) => {
         const success = await followService.followUser(followerId, followingId);
 
         if (success) {
-            // Emit socket event for real-time notification
+            // Emit socket event to the user being followed
             SocketManager.emitToUser(followingId, SocketEvent.FOLLOW_UPDATE, {
                 type: 'new_follower',
                 followerId
+            });
+
+            // Emit socket event to the follower (current user)
+            SocketManager.emitToUser(followerId, SocketEvent.FOLLOW_UPDATE, {
+                type: 'following_added',
+                followingId
             });
 
             return sendCreated(res, 'Followed successfully');
@@ -57,9 +63,16 @@ const unfollowUser = async (req, res) => {
         const success = await followService.unfollowUser(followerId, followingId);
 
         if (success) {
+            // Emit socket event to the user being unfollowed
             SocketManager.emitToUser(followingId, SocketEvent.FOLLOW_UPDATE, {
                 type: 'lost_follower',
                 followerId
+            });
+
+            // Emit socket event to the unfollower (current user)
+            SocketManager.emitToUser(followerId, SocketEvent.FOLLOW_UPDATE, {
+                type: 'following_removed',
+                followingId
             });
 
             return sendSuccess(res, 'Unfollowed successfully');
@@ -138,6 +151,25 @@ const getFollowStatus = async (req, res) => {
         });
     } catch (error) {
         console.error('❌ GetFollowStatus error:', error.message);
+        return sendError(res, 'Server error');
+    }
+};
+
+/**
+ * Get following IDs only (for caching)
+ * GET /api/v1/follow/following/ids
+ */
+const getFollowingIds = async (req, res) => {
+    try {
+        const userId = req.account?.account_id;
+        if (!userId) {
+            return sendFail(res, 'Invalid authentication token');
+        }
+
+        const followingIds = await followService.getFollowingIds(userId);
+        return sendSuccess(res, 'Get following IDs successfully', { followingIds });
+    } catch (error) {
+        console.error('❌ GetFollowingIds error:', error.message);
         return sendError(res, 'Server error');
     }
 };
@@ -279,6 +311,7 @@ module.exports = {
     unfollowUser,
     getFollowers,
     getFollowing,
+    getFollowingIds,
     getFollowStatus,
     blockUser,
     unblockUser,

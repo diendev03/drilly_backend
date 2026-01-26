@@ -71,6 +71,18 @@ const getFollowing = async (userId, limit = 50, offset = 0) => {
 };
 
 /**
+ * Get following IDs only (for caching)
+ */
+const getFollowingIds = async (userId) => {
+    const db = await getConnection();
+    const [rows] = await db.execute(
+        `SELECT following_id FROM user_follow WHERE follower_id = ?`,
+        [userId]
+    );
+    return rows.map(row => row.following_id);
+};
+
+/**
  * Check if both users follow each other (mutual follow)
  */
 const checkMutualFollow = async (user1, user2) => {
@@ -258,6 +270,7 @@ module.exports = {
     unfollowUser,
     getFollowers,
     getFollowing,
+    getFollowingIds,
     checkMutualFollow,
     getFollowStatus,
     getFollowCounts,
