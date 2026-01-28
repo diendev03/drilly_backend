@@ -6,7 +6,8 @@
 const db = require("../config/database");
 
 /**
- * Save or update FCM token for a user
+ * Save FCM token for a user (1 token per account)
+ * Deletes all existing tokens for the user before saving the new one
  * @param {number} userId - User ID
  * @param {string} token - FCM token
  * @param {string} platform - Platform: android | ios | web
@@ -15,20 +16,21 @@ const db = require("../config/database");
 const saveToken = async (userId, token, platform = "android", deviceId = null) => {
     const conn = await db;
 
-    // Upsert: update if token exists, insert if not
+    // First, delete all existing tokens for this user (1 token per account)
+    await conn.execute(
+        `DELETE FROM fcm_tokens WHERE user_id = ?`,
+        [userId]
+    );
+    console.log(`🗑️ Deleted old FCM tokens for user ${userId}`);
+
+    // Insert new token
     const query = `
     INSERT INTO fcm_tokens (user_id, fcm_token, platform, device_id, is_active)
     VALUES (?, ?, ?, ?, 1)
-    ON DUPLICATE KEY UPDATE 
-      user_id = VALUES(user_id),
-      platform = VALUES(platform),
-      device_id = VALUES(device_id),
-      is_active = 1,
-      updated_at = CURRENT_TIMESTAMP
   `;
 
     const [result] = await conn.execute(query, [userId, token, platform, deviceId]);
-    console.log(`📲 FCM token saved for user ${userId} (${platform})`);
+    console.log(`📲 FCM token saved for user ${userId} (${platform}): ${token.substring(0, 20)}...`);
     return result;
 };
 

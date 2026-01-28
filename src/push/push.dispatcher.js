@@ -30,7 +30,7 @@ const dispatch = async (type, userIds, data) => {
         // Build payload using builder
         const payload = buildPush(type, data);
 
-        console.log(`📨 Push dispatch [${type}] to ${validUserIds.length} user(s)`);
+        console.log(`📨 Push dispatch [${type}] to ${validUserIds.length} user(s): userIds=${JSON.stringify(validUserIds)}`);
 
         // Send via FCM service
         const result = await fcmService.sendToMultipleUsers(validUserIds, payload);

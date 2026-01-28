@@ -118,6 +118,8 @@ const sendToMultipleUsers = async (userIds, payload) => {
         return { sent: 0, failed: 0 };
     }
 
+    console.log(`🔑 Found ${tokens.length} FCM tokens for users ${userIds.join(",")}: ${tokens.map(t => `user_id=${t.user_id}`).join(", ")}`);
+
     const results = await Promise.all(
         tokens.map((t) => sendToDevice(t.fcm_token, payload))
     );

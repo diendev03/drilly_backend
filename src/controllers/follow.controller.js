@@ -28,7 +28,8 @@ const followUser = async (req, res) => {
             // Emit socket event to the user being followed
             SocketManager.emitToUser(followingId, SocketEvent.FOLLOW_UPDATE, {
                 type: 'new_follower',
-                followerId
+                followerId,
+                followingId // Add logic for frontend to match
             });
 
             // Emit socket event to the follower (current user)
@@ -66,7 +67,8 @@ const unfollowUser = async (req, res) => {
             // Emit socket event to the user being unfollowed
             SocketManager.emitToUser(followingId, SocketEvent.FOLLOW_UPDATE, {
                 type: 'lost_follower',
-                followerId
+                followerId,
+                followingId // Add logic for frontend to match
             });
 
             // Emit socket event to the unfollower (current user)

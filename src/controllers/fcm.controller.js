@@ -31,6 +31,8 @@ const registerToken = async (req, res) => {
 
         await fcmTokenRepo.saveToken(userId, token, validPlatform, device_id || null);
 
+        console.log(`📲 FCM Token Registered: user_id=${userId}, token=${token.substring(0, 30)}..., platform=${validPlatform}`);
+
         return sendSuccess(res, "FCM token registered successfully", {
             user_id: userId,
             platform: validPlatform,

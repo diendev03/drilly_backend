@@ -1,5 +1,7 @@
 const followRepo = require("../repositories/follow.repository");
 const profileRepo = require("../repositories/profile.repository"); // To get names/avatars for notifications
+const pushDispatcher = require("../push/push.dispatcher");
+const { PUSH_TYPE } = require("../push/push.type");
 
 /**
  * Follow a user
@@ -33,6 +35,19 @@ const followUser = async (followerId, followingId) => {
                     followerAvatar: followerProfile.avatar
                 }
             });
+
+            // 4. Dispatch Push Notification
+            await pushDispatcher.dispatchToUser(
+                PUSH_TYPE.FOLLOW,
+                followingId,
+                {
+                    followerId,
+                    followerName: followerProfile.name,
+                    followerAvatar: followerProfile.avatar,
+                    title: 'New Follower',
+                    body: `${followerProfile.name} started following you.`
+                }
+            );
         }
     } catch (e) {
         console.error("Failed to create notification on follow:", e);
