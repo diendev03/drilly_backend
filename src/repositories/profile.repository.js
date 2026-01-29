@@ -60,7 +60,7 @@ const getProfile = async (account_id) => {
   }
 };
 
-// ✅ Cập nhật profile
+// ✅ Cập nhật profile (Dynamic Query)
 const updateProfile = async ({
   account_id,
   name,
@@ -71,18 +71,56 @@ const updateProfile = async ({
   bio,
   location
 }) => {
+  const updates = [];
+  const values = [];
+
+  if (name !== undefined) {
+    updates.push('name = ?');
+    values.push(name);
+  }
+  if (birthday !== undefined) {
+    updates.push('birthday = ?');
+    values.push(birthday);
+  }
+  if (gender !== undefined) {
+    updates.push('gender = ?');
+    values.push(gender);
+  }
+  if (my_color !== undefined) {
+    updates.push('my_color = ?');
+    values.push(my_color);
+  }
+  if (avatar !== undefined) {
+    updates.push('avatar = ?');
+    values.push(avatar);
+  }
+  if (bio !== undefined) {
+    updates.push('bio = ?');
+    values.push(bio);
+  }
+  if (location !== undefined) {
+    updates.push('location = ?');
+    values.push(location);
+  }
+
+  // Nếu không có gì để update thì return luôn
+  if (updates.length === 0) {
+    return await getProfile(account_id);
+  }
+
   const query = `
     UPDATE profile
-    SET name = ?,  birthday = ?, gender = ?, my_color = ?, avatar = ?, bio = ?, location = ?
+    SET ${updates.join(', ')}
     WHERE account_id = ?
   `;
+  values.push(account_id);
+
   try {
     const db = await getConnection();
-    const [result] = await db.execute(query, [
-      name, birthday, gender, my_color, avatar, bio, location, account_id
-    ]);
-    if (result.affectedRows === 0) throw new Error('Không tìm thấy profile');
-    return {};
+    await db.execute(query, values);
+
+    // Trả về data mới nhất sau khi update
+    return await getProfile(account_id);
   } catch (error) {
     console.error('❌ Lỗi updateProfile:', error.message);
     throw error;
@@ -162,4 +200,3 @@ module.exports = {
   getProfile,
   findProfile
 };
-// File: src/models/profile.model.js
