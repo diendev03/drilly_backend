@@ -4,18 +4,21 @@ const getConnection = async () => {
   return await dbPromise;
 };
 
-const sendMessage = async (conversationId, senderId, content) => {
+const sendMessage = async (conversationId, senderId, content, mediaUrl = null, mediaType = null, mediaName = null) => {
   const db = await getConnection();
   const [result] = await db.execute(
-    `INSERT INTO messages (conversation_id, sender_id, content, created_at)
-     VALUES (?, ?, ?, NOW())`,
-    [conversationId, senderId, content]
+    `INSERT INTO messages (conversation_id, sender_id, content, media_url, media_type, media_name, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+    [conversationId, senderId, content, mediaUrl, mediaType, mediaName]
   );
   return {
     id: result.insertId,
     conversation_id: conversationId,
     sender_id: senderId,
     content,
+    media_url: mediaUrl,
+    media_type: mediaType,
+    media_name: mediaName,
     created_at: new Date()
   };
 };
@@ -46,6 +49,9 @@ const getMessages = async ({ conversationId, userId, page = 1, limit = 50 }) => 
       m.sender_id,
       m.conversation_id,
       m.content,
+      m.media_url,
+      m.media_type,
+      m.media_name,
       m.created_at
     FROM messages m
     WHERE m.conversation_id = ?

@@ -11,10 +11,10 @@ const sendMessage = async (req, res) => {
     const senderId = req.account?.account_id;
     if (!senderId) return sendFail(res, "Invalid authentication token");
 
-    const { receiver_id, conversation_id, content } = req.body;
-    if (!content) return sendFail(res, "Content is required");
+    const { receiver_id, conversation_id, content, media_url, media_type, media_name } = req.body;
 
-
+    // Allow empty content if media is present
+    if (!content && !media_url) return sendFail(res, "Content or media is required");
 
     // ✅ Gửi tin nhắn
     const message = await messageService.sendMessage({
@@ -22,6 +22,9 @@ const sendMessage = async (req, res) => {
       receiverId: receiver_id,
       conversationId: conversation_id,
       content,
+      mediaUrl: media_url,
+      mediaType: media_type,
+      mediaName: media_name,
     });
 
     const finalConvId = message.conversation_id;

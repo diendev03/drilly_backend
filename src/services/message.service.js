@@ -2,11 +2,12 @@ const conversationRepo = require("../repositories/conversation.repository");
 const messageRepo = require("../repositories/message.repository");
 
 // ✅ Gửi tin nhắn (tối ưu)
-const sendMessage = async ({ senderId, receiverId, conversationId, content }) => {
+const sendMessage = async ({ senderId, receiverId, conversationId, content, mediaUrl, mediaType, mediaName }) => {
   try {
-    console.log(`📨 sendMessage called:`, { senderId, receiverId, conversationId, content: content?.substring(0, 20) });
+    console.log(`📨 sendMessage called:`, { senderId, receiverId, conversationId, content: content?.substring(0, 20), mediaType });
 
-    if (!content?.trim()) throw new Error("Nội dung tin nhắn không hợp lệ");
+    // Allow empty content if media is present
+    if (!content?.trim() && !mediaUrl) throw new Error("Nội dung tin nhắn không hợp lệ");
 
     let convId = null;
 
@@ -34,7 +35,7 @@ const sendMessage = async ({ senderId, receiverId, conversationId, content }) =>
 
     // 🔹 2️⃣ Gửi tin nhắn
     console.log(`💬 Inserting message into conversation ${convId}`);
-    const message = await messageRepo.sendMessage(convId, senderId, content.trim());
+    const message = await messageRepo.sendMessage(convId, senderId, content?.trim() || '', mediaUrl, mediaType, mediaName);
     console.log(`✅ Message inserted with id: ${message.id}`);
 
     // 🔹 3️⃣ Trả về dữ liệu đồng nhất
@@ -43,6 +44,9 @@ const sendMessage = async ({ senderId, receiverId, conversationId, content }) =>
       sender_id: senderId,
       conversation_id: convId,
       content: message.content,
+      media_url: message.media_url,
+      media_type: message.media_type,
+      media_name: message.media_name,
       created_at: message.created_at,
     };
   } catch (error) {
