@@ -70,6 +70,11 @@ const addMember = async (conversationId, userId, role = "member", name = null) =
 
 const findPrivateConversation = async (user1, user2) => {
   const db = await getConnection();
+
+  // Ensure IDs are integers (Critical for Web requests)
+  const u1 = parseInt(user1);
+  const u2 = parseInt(user2);
+
   const query = `
     SELECT c.*
     FROM conversation c
@@ -80,8 +85,8 @@ const findPrivateConversation = async (user1, user2) => {
       AND m2.user_id = ?
     LIMIT 1
   `;
-  console.log(`🔍 findPrivateConversation: user1=${user1}, user2=${user2}`);
-  const [rows] = await db.execute(query, [user1, user2]);
+  console.log(`🔍 findPrivateConversation: u1=${u1} (${typeof u1}), u2=${u2} (${typeof u2})`);
+  const [rows] = await db.execute(query, [u1, u2]);
   console.log(`📋 findPrivateConversation result: ${rows.length > 0 ? `Found conv ${rows[0].id}` : 'Not found'}`);
   return rows[0] || null;
 };

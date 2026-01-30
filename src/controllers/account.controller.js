@@ -35,8 +35,8 @@ const login = async (req, res) => {
 
     res.cookie('accessToken', result.accessToken, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: 'Lax',
+      secure: isProduction, // HTTPS only in production
+      sameSite: isProduction ? 'None' : 'Lax', // 'None' for cross-origin in production
       path: '/',
       maxAge: 24 * 60 * 60 * 1000 // 1 day
     });
@@ -44,7 +44,7 @@ const login = async (req, res) => {
     res.cookie('refreshToken', result.refreshToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'Lax',
+      sameSite: isProduction ? 'None' : 'Lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });

@@ -38,6 +38,9 @@ const sendMessage = async ({ senderId, receiverId, conversationId, content, medi
     const message = await messageRepo.sendMessage(convId, senderId, content?.trim() || '', mediaUrl, mediaType, mediaName);
     console.log(`✅ Message inserted with id: ${message.id}`);
 
+    // 🔹 2.1️⃣ Cập nhật last_read_at cho sender (Để không bị tính là unread)
+    await conversationRepo.markAsRead(senderId, convId);
+
     // 🔹 3️⃣ Trả về dữ liệu đồng nhất
     return {
       id: message.id,

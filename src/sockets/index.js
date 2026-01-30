@@ -11,7 +11,7 @@ const initSocket = (server) => {
       methods: ["GET", "POST"],
       credentials: true,
     },
-    transports: ["websocket"],
+    transports: ["websocket", "polling"], // Add polling fallback for web
     pingInterval: 5000,
     pingTimeout: 10000,
   });
