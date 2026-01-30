@@ -39,7 +39,7 @@ app.use(express.json());
 initRoutes(app);
 
 // Serve Static Frontend (Drilly Web)
-const buildPath = path.join(__dirname, '../../drilly_web/dist');
+const buildPath = path.join(__dirname, '../../drilly_flutter/build/web');
 app.use(express.static(buildPath));
 
 // Fallback for React Router
