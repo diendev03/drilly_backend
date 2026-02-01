@@ -7,7 +7,7 @@ let io;
 const initSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: "*", // Allow all origins for Desktop app support
+      origin: ["https://drilly.io.vn", "http://localhost:3000", "http://192.168.1.3:3000"],
       methods: ["GET", "POST"],
       credentials: true,
     },
