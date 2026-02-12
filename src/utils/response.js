@@ -15,13 +15,15 @@ const sendCreated = (res, message = 'Created successfully', data = {}) => {
 };
 
 // Flexible helper: supports both (res, message, data) and (res, statusCode, message)
+// Returns HTTP 200 with status: false for application-level errors
 const sendFail = (res, arg2 = 'Bad request', arg3 = {}) => {
-  let status = 400;
+  let httpStatus = 200; // Always return 200 for structured error responses
   let message = 'Bad request';
   let data = {};
 
   if (typeof arg2 === 'number') {
-    status = arg2;
+    // If first arg is a number, it's for backward compatibility
+    // but we still return 200 with the message
     if (typeof arg3 === 'string') {
       message = arg3;
       data = {};
@@ -33,7 +35,7 @@ const sendFail = (res, arg2 = 'Bad request', arg3 = {}) => {
     data = arg3 || {};
   }
 
-  return res.status(status).json({
+  return res.status(httpStatus).json({
     status: false,
     message,
     data,

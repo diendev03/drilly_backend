@@ -11,6 +11,7 @@ const blockRoute = require('./block.route');
 const notificationRoute = require('./notification.route');
 const callRoute = require('./call.route');
 const fcmRoute = require('./fcm.route');
+const featureRoute = require('./feature.route');
 
 const initRoutes = (app) => {
   app.use('/api/v1/user', profileRoute);
@@ -26,6 +27,7 @@ const initRoutes = (app) => {
   app.use('/api/v1/notifications', notificationRoute);
   app.use('/api/v1/call', callRoute);
   app.use('/api/v1/fcm', fcmRoute);
+  app.use('/api/v1/features', featureRoute);
 };
 
 module.exports = initRoutes;

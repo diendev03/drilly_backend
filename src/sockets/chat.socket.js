@@ -63,6 +63,22 @@ module.exports = (io, socket) => {
     console.log(`🔍 Status check: User ${targetUserId} is ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
   });
 
+  // ✅ Batch check users status
+  socket.on('check_users_status', (userIds) => {
+    if (!Array.isArray(userIds)) return;
+
+    // Filter active users from the requested list
+    const activeUsers = userIds.filter(id => userSockets.has(id));
+
+    // Send response back to requester
+    socket.emit('users_status_response', {
+      activeUsers,
+      timestamp: new Date().toISOString()
+    });
+
+    console.log(`🔍 Batch status check for ${userIds.length} users. Active: ${activeUsers.length}`);
+  });
+
 
   const profileRepo = require("../repositories/profile.repository");
   //...

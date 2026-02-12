@@ -24,16 +24,15 @@ const createUser = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return sendFail(res, 'Thiếu email hoặc mật khẩu');
 
     const result = await accountService.login({ email, password });
-    // result = { accessToken, refreshToken }
+    // result = { access_token, refresh_token, account_id }
 
     // Set HttpOnly Cookies
     console.log("Setting HttpOnly Cookies... (NODE_ENV=" + process.env.NODE_ENV + ")");
     const isProduction = process.env.NODE_ENV === 'production';
 
-    res.cookie('accessToken', result.accessToken, {
+    res.cookie('accessToken', result.access_token, {
       httpOnly: true,
       secure: isProduction, // HTTPS only in production
       sameSite: isProduction ? 'None' : 'Lax', // 'None' for cross-origin in production
@@ -41,7 +40,7 @@ const login = async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000 // 1 day
     });
 
-    res.cookie('refreshToken', result.refreshToken, {
+    res.cookie('refreshToken', result.refresh_token, {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? 'None' : 'Lax',
@@ -51,7 +50,10 @@ const login = async (req, res) => {
 
     return sendSuccess(res, 'Đăng nhập thành công', result);
   } catch (error) {
-    if (error.message.includes('không tồn tại') || error.message.includes('không chính xác')) {
+    // Return specific error messages from service
+    if (error.message.includes('không tồn tại') ||
+      error.message.includes('không chính xác') ||
+      error.message.includes('Vui lòng nhập')) {
       return sendFail(res, error.message);
     }
     return sendError(res, 'Lỗi server', error);

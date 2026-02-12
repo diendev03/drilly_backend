@@ -27,12 +27,26 @@ const findUserByEmail = async (email) => {
 
 // Đăng nhập (email hoặc phone)
 const login = async ({ email, password }) => {
-  // email field can contain email OR phone
-  const account = await accountRepository.getAccountByEmailOrPhone(email);
-  if (!account) throw new Error('Tài khoản không tồn tại');
+  // Validate input
+  if (!email || !password) {
+    throw new Error('Vui lòng nhập đầy đủ email/số điện thoại và mật khẩu');
+  }
 
+  // Trim whitespace
+  email = email.trim();
+  password = password.trim();
+
+  // Check if account exists (email field can contain email OR phone)
+  const account = await accountRepository.getAccountByEmailOrPhone(email);
+  if (!account) {
+    throw new Error('Tài khoản không tồn tại');
+  }
+
+  // Verify password
   const ok = await bcrypt.compare(password, account.password);
-  if (!ok) throw new Error('Mật khẩu không chính xác');
+  if (!ok) {
+    throw new Error('Mật khẩu không chính xác');
+  }
 
   const payload = { account_id: account.id, email: account.email };
   const tokens = generateTokens(payload); // { accessToken, refreshToken }
