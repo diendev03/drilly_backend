@@ -61,8 +61,8 @@ const markAsRead = async (req, res) => {
     await conversationService.markAsRead(accountId, id);
 
     // ✅ Emit socket event update badge
-    console.log(`📡 Emitting MESSAGE_READ to user ${accountId}`);
-    SocketManager.emitToUser(accountId, socketEvent.MESSAGE_READ, {
+    console.log(`📡 Emitting MESSAGE_READ to conversation ${id}`);
+    SocketManager.emitToConversation(parseInt(id), socketEvent.MESSAGE_READ, {
       conversationId: parseInt(id),
       readerId: accountId,
       readAt: new Date()

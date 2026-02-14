@@ -24,9 +24,11 @@ const saveToken = async (userId, token, platform = "android", deviceId = null) =
     console.log(`🗑️ Deleted old FCM tokens for user ${userId}`);
 
     // Insert new token
+    // Insert new token or update if exists (claiming the token for this user)
     const query = `
     INSERT INTO fcm_tokens (user_id, fcm_token, platform, device_id, is_active)
     VALUES (?, ?, ?, ?, 1)
+    ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), platform = VALUES(platform), device_id = VALUES(device_id), is_active = 1
   `;
 
     const [result] = await conn.execute(query, [userId, token, platform, deviceId]);

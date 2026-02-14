@@ -52,6 +52,7 @@ const getMessages = async ({ conversationId, userId, page = 1, limit = 50 }) => 
       m.media_url,
       m.media_type,
       m.media_name,
+      m.status,
       m.created_at
     FROM messages m
     WHERE m.conversation_id = ?
@@ -65,10 +66,31 @@ const getMessages = async ({ conversationId, userId, page = 1, limit = 50 }) => 
   return (rows || []).reverse();
 };
 
+const updateMessageStatus = async (messageId, status) => {
+  const db = await getConnection();
+  const [result] = await db.execute(
+    'UPDATE messages SET status = ? WHERE id = ?',
+    [status, messageId]
+  );
+  return result.affectedRows > 0;
+};
+
+const markMessagesAsRead = async (conversationId, readerId) => {
+  const db = await getConnection();
+  const [result] = await db.execute(
+    "UPDATE messages SET status = 'seen' WHERE conversation_id = ? AND sender_id != ? AND status != 'seen'",
+    [conversationId, readerId]
+  );
+  return result.affectedRows > 0;
+};
+
+
 
 
 
 module.exports = {
   sendMessage,
-  getMessages
+  getMessages,
+  updateMessageStatus,
+  markMessagesAsRead
 };

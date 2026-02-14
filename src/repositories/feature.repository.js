@@ -27,7 +27,7 @@ const getUserFeatures = async (userId) => {
     const query = `
     SELECT f.id, f.name, f.icon_url, f.description, uf.enabled
     FROM features f
-    LEFT JOIN user_features uf ON f.id = uf.feature_id AND uf.user_id = ?
+    LEFT JOIN user_features uf ON f.id COLLATE utf8mb4_unicode_ci = uf.feature_id COLLATE utf8mb4_unicode_ci AND uf.account_id = ?
     WHERE f.is_active = true
   `;
     try {
@@ -43,7 +43,7 @@ const getUserFeatures = async (userId) => {
 // Toggle user feature
 const toggleUserFeature = async (userId, featureId, enabled) => {
     const query = `
-    INSERT INTO user_features (user_id, feature_id, enabled)
+    INSERT INTO user_features (account_id, feature_id, enabled)
     VALUES (?, ?, ?)
     ON DUPLICATE KEY UPDATE enabled = VALUES(enabled)
   `;

@@ -133,6 +133,28 @@ module.exports = (io, socket) => {
     };
 
     SocketManager.emitToConversation(conversationId, SocketEvent.TYPING, typingEvent);
+
+  });
+
+  // ✅ Khi user đã đọc tin nhắn
+  socket.on(SocketEvent.MESSAGE_READ, async (data) => {
+    const { conversationId } = data;
+    if (!conversationId) return;
+
+    try {
+      const messageRepo = require("../repositories/message.repository");
+      // Mark messages as read in DB where sender != userId
+      await messageRepo.markMessagesAsRead(conversationId, userId);
+
+      // Emit to conversation so sender sees it
+      SocketManager.emitToConversation(conversationId, SocketEvent.MESSAGE_READ, {
+        conversationId,
+        readerId: userId,
+        timestamp: new Date().toISOString()
+      });
+    } catch (e) {
+      console.error("Socket MESSAGE_READ error:", e);
+    }
   });
 
   // ✅ Khi user ngắt kết nối

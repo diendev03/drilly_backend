@@ -42,7 +42,11 @@ const getConversations = async (accountId) => {
 };
 
 const markAsRead = async (userId, conversationId) => {
-  return await conversationRepo.markAsRead(userId, conversationId);
+  // 1. Mark conversation as read (reset unread count)
+  await conversationRepo.markAsRead(userId, conversationId);
+  // 2. Mark messages as seen in messages table
+  const messageRepo = require("../repositories/message.repository");
+  return await messageRepo.markMessagesAsRead(conversationId, userId);
 };
 
 module.exports = {

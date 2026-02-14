@@ -26,6 +26,7 @@ const createCategory = async (req, res) => {
 
         // 🔌 Socket.IO emit
         try {
+            console.log(`[Socket] Emitting CATEGORY_CREATED to user ${owner_id}`, newCategory);
             SocketManager.emitToUser(owner_id, SocketEvent.CATEGORY_CREATED, newCategory);
         } catch (socketErr) {
             console.error('Socket emit failed:', socketErr);
